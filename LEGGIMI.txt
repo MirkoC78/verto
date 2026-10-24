@@ -1,0 +1,18 @@
+VERTO — pacchetto per la pubblicazione (versione 81adf84fd8)
+
+Contenuto
+  index.html             l'applicazione completa (caratteri incorporati)
+  manifest.webmanifest   dati per l'installazione su telefono
+  sw.js                  service worker: rende l'app utilizzabile senza rete
+  icons/                 icone dell'app
+  LICENZE-CARATTERI.txt  licenze SIL OFL 1.1 di Lexend, Marcellus e Gentium Book Plus
+
+Pubblicazione
+  Carica l'intera cartella su un hosting statico con HTTPS (per esempio GitHub Pages,
+  Netlify, Cloudflare Pages o lo spazio web della scuola). Non serve un server: niente
+  database, niente account, nessun dato degli studenti lascia il dispositivo.
+  L'installazione («Installa» / «Aggiungi alla schermata Home») richiede HTTPS.
+
+Aggiornamenti
+  Ricostruisci con «node build.js» e ricarica i file: il service worker cambia nome di cache
+  a ogni versione e sostituisce la vecchia copia offline al primo accesso.
