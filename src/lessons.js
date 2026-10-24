@@ -301,7 +301,7 @@
     else if (card.part) { e = entryOf(card.part); keys = new RegExp('^v:part:' + (card.tense || 'pres') + ':'); }
     if (!e) return null;
     const forms = e.forms.filter((f) => keys.test(f.key) && f.c !== 'voc' && f.req.every((t) => sc.T.has(t)));
-    if (forms.length < 3) return null;
+    if (forms.length < 2) return null;
     const f = pick(forms);
     const valid = uniq(forms.filter((x) => x.f === f.f).map((x) => x.d));
     const dis = shuffle(uniq(forms.map((x) => x.d).filter((d) => !valid.includes(d)))).slice(0, 2);
@@ -363,7 +363,14 @@
     USED = new Set();
     const withTeach = o.teach !== false && l.teach;
     if (withTeach) {
+      // la frase della guida che introduce una tabella sta sulla stessa schermata della tabella
+      const cards = [];
       for (const card of l.teach) {
+        const prev = cards[cards.length - 1];
+        if (prev && TABLE_CARD(card) && !card.say && Object.keys(prev).length === 1 && prev.say) cards[cards.length - 1] = Object.assign({ say: prev.say }, card);
+        else cards.push(card);
+      }
+      for (const card of cards) {
         items.push({ type: 'teach', card, topic: x.unit.id });
         if (TABLE_CARD(card)) { const q = quizFor(card, sc); if (q) items.push(q); }
       }

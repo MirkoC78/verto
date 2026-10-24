@@ -700,6 +700,7 @@
           if (fl.x) e.extra = fl.x.split(';').map((s) => { const [ff, c, n] = s.split(':'); return { f: ff, c, n }; });
           const r = nounForms(e);
           e.decl = r.info.d;
+          e.stems = { n: r.info.stem };
           e.t = fl.t || DECL_TOPIC[r.info.d];
           const gs = { m: 'm.', f: 'f.', n: 'n.' }[e.g];
           const shortGen = { 1: '-ae', 2: '-ī', 4: '-ūs', 5: '-eī' }[r.info.d];
@@ -715,6 +716,7 @@
           if (fl.x) e.extra = fl.x.split(';').map((s) => { const [ff, c, n, g] = s.split(':'); return { f: ff, c, n, g }; });
           const r = adjForms(e);
           e.adjCls = r.info.cls;
+          e.stems = { a: r.info.stem };
           e.t = fl.t || (r.info.cls === 1 ? 'agg1' : 'agg2');
           if (r.info.cls === 1) e.lemmaQ = parts[0] + ', -' + parts[1].slice(r.info.stem.length) + ', -' + parts[2].slice(r.info.stem.length);
           else if (r.info.kind === 3) e.lemmaQ = parts.join(', ');
@@ -747,6 +749,8 @@
             e.t = 'v_dep';
           }
           e.conj = r.conj;
+          // temi per evidenziare le desinenze nelle tabelle: presente, perfetto, supino
+          e.stems = { pres: k === 'v' ? e.inf.slice(0, -3) : depConjOf(e.pres, e.inf)[1], perf: e.perf && e.perf !== '-' ? e.perf.slice(0, -1) : null, sup: e.sup && e.sup !== '-' ? e.sup.slice(0, -2) : (e.part ? e.part.slice(0, -2) : null) };
           e.cls = CONJ_NAME[r.conj] + (e.dep ? ' (deponente)' : e.semi ? ' (semideponente)' : '');
           e.headQ = e.pres;
           e.forms = r.forms.map((x) => mk(x.f, { d: verbDesc(x, e.dep ? 'dep' : ''), key: verbKey(x), req: x.req, mood: x.mood, tense: x.tense, voice: x.voice, p: x.p, c: x.c, n: x.n, g: x.g }));

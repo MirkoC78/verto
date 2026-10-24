@@ -70,6 +70,8 @@ for (const f of L.FLAT) {
     let its;
     try { its = L.buildLesson(l.id, { teach: rep === 0 }); } catch (e) { err(`${l.id}: eccezione ${e.stack.split('\n').slice(0, 3).join(' ')}`); continue; }
     const practice = its.filter((x) => x.type !== 'teach' && !x.quiz);
+    // dopo ogni tabella generata dal motore, una domanda di controllo
+    its.forEach((x, k) => { if (x.type === 'teach' && L.TABLE_CARD(x.card) && !(its[k + 1] && its[k + 1].quiz)) err(`${l.id}: tabella senza domanda di controllo (${JSON.stringify(x.card).slice(0, 60)})`); });
     minItems = Math.min(minItems, practice.length); maxItems = Math.max(maxItems, practice.length);
     if (practice.length < 8 || practice.length > 12) err(`${l.id}: ${practice.length} esercizi (servono da 8 a 12)`);
     for (const it of its) {
