@@ -51,6 +51,11 @@ while (stats.ok < N && i < 3 * N) {
   if (unk) { stats.unknown++; fails.push(`parola sconosciuta «${unk}»: ${s.la}`); continue; }
   if (bad || s.tags.some((q) => !T.has(q))) { stats.outside++; fails.push(`fuori argomento «${bad || s.tags}» [${sel.join(' ')}]: ${s.la}`); continue; }
   if (!s.it.length || s.it.some((x) => /undefined|null|\s{2}|\s[,.!?]|^\s|\s$/.test(x))) { stats.itBad++; fails.push(`italiano: ${s.la} → ${s.it.join(' | ')}`); continue; }
+  // traccia: ogni parola ha la sua analisi esatta, dentro gli argomenti scelti, e la grafia con le quantità
+  const ws = words(s.la);
+  const tr = s.tokens || [];
+  const badTr = tr.length !== ws.length || tr.some((t, k) => { const e = E.BY_UID.get(t.uid); const f = e && e.forms.find((x) => x.key === t.key && E.norm(x.f) === E.norm(ws[k])); return !f || !f.req.every((q) => T.has(q)) || E.norm(t.q) !== E.norm(ws[k]); });
+  if (badTr) { stats.trace = (stats.trace || 0) + 1; fails.push(`traccia: ${s.la} → ${tr.map((t) => t.uid + ':' + t.key).join(' ')}`); continue; }
   stats.ok++;
   byFocus[s.focus] = (byFocus[s.focus] || 0) + 1;
   if (samples.length < 50 && stats.ok % Math.max(1, Math.floor(N / 50)) === 1) samples.push({ s, sel, focus });

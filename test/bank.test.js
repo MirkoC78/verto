@@ -35,3 +35,27 @@ console.log('  Frasi per argomento: ' + TOPICS.map((t) => `${t.id} ${perTopic[t.
 console.log(`  Massime: ${SENTENTIAE.length}; parole fuori lessico nelle massime: ${unknownWords.size}`);
 if (errors.length) { console.log('\nErrori:'); errors.forEach((e) => console.log('  ✗ ' + e)); process.exitCode = 1; }
 else console.log('  Nessun errore.');
+
+/* ---------- Ordine libero nella retroversione ---------- */
+const SN = require('../src/sentence.js');
+const ord = [];
+BANK.forEach((b) => { if (!SN.orderOK(b[0], SN.tiles(b[0]))) ord.push(`ordine originale rifiutato: «${b[0]}»`); });
+const CASES = [
+  ['Puella rosam amat.', ['rosam', 'puella', 'amat'], true],
+  ['Puella rosam amat.', ['amat', 'rosam', 'puella'], true],
+  ['Puellae in_silva ambulant.', ['in_silva', 'ambulant', 'puellae'], true],
+  ['Ego te amo, tu me non amas.', ['te', 'ego', 'amo', 'tu', 'me', 'non', 'amas'], true],
+  ['Ego te amo, tu me non amas.', ['te', 'ego', 'amo', 'tu', 'non', 'me', 'amas'], false],
+  ['Ego te amo, tu me non amas.', ['tu', 'me', 'amo', 'ego', 'te', 'non', 'amas'], false],
+  ['Laboro et canto.', ['canto', 'et', 'laboro'], false],
+  ['Dum pueri ludunt, ancillae cenam parant.', ['dum', 'ludunt', 'pueri', 'cenam', 'ancillae', 'parant'], true],
+  ['Dum pueri ludunt, ancillae cenam parant.', ['pueri', 'dum', 'ludunt', 'ancillae', 'cenam', 'parant'], false],
+  ['Puer quem vides meus filius est.', ['puer', 'quem', 'vides', 'filius', 'meus', 'est'], true],
+  ['Roma maior est quam Tusculum.', ['maior', 'est', 'roma', 'quam', 'tusculum'], true],
+  ['Roma maior est quam Tusculum.', ['roma', 'quam', 'maior', 'est', 'tusculum'], false],
+];
+for (const [la, ans, want] of CASES) if (SN.orderOK(la, ans) !== want) ord.push(`ordine «${ans.join(' ')}» per «${la}»: atteso ${want ? 'accettato' : 'rifiutato'}`);
+const TYPED = [['Puellae in_silva ambulant.', 'in silva puellae ambulant', true], ['Puellae in_silva ambulant.', 'puellae silva in ambulant', false], ['Servi dominum suum timent.', 'Dominum suum servi timent', true]];
+for (const [la, typed, want] of TYPED) { const t = SN.typedTiles(la, typed); const ok = !!t && SN.orderOK(la, t); if (ok !== want) ord.push(`risposta scritta «${typed}» per «${la}»: attesa ${want ? 'accettata' : 'rifiutata'}`); }
+console.log(`  Ordine libero: ${BANK.length} frasi nell'ordine originale, ${CASES.length + TYPED.length} casi di prova`);
+if (ord.length) { ord.forEach((e) => console.log('  ✗ ' + e)); process.exitCode = 1; }

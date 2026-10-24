@@ -1,5 +1,6 @@
 /* VERTO — banca di frasi verificate.
-   [latino, traduzioni accettate separate da |, argomenti richiesti, suggerimento facoltativo]
+   [latino, traduzioni accettate separate da |, argomenti richiesti, suggerimento facoltativo, letture da preferire]
+   Letture: «parola=lemma» oppure «parola=@chiave» (es. amicitia=@abl), dove l'analisi automatica sceglierebbe male.
    Il trattino basso unisce le parole in un'unica tessera (preposizione + nome). */
 (function (root) {
 const BANK = [
@@ -73,7 +74,7 @@ const BANK = [
 ['Nautis pecunia deerit.', 'Ai marinai mancherà il denaro.|Il denaro mancherà ai marinai.', 'v_pres n1 v_if v_poss'],
 // --- Imperativo
 ['Pueri, magistrum audite!', 'Fanciulli, ascoltate il maestro!|Ragazzi, ascoltate il maestro!|Bambini, ascoltate il maestro!', 'v_pres n2 v_imper'],
-['Serve, aquam porta!', "Servo, porta l'acqua!|Schiavo, porta l'acqua!", 'v_pres n1 n2 v_imper', 'Porta qui è imperativo di porto, non il nome «porta».'],
+['Serve, aquam porta!', "Servo, porta l'acqua!|Schiavo, porta l'acqua!", 'v_pres n1 n2 v_imper', 'Porta qui è imperativo di porto, non il nome «porta».', 'porta=porto'],
 ['Amate patriam, Romani!', 'Amate la patria, Romani!|Romani, amate la patria!|Amate la patria, o Romani!', 'v_pres n1 n2 v_imper'],
 ['Discipule, lege et scribe!', 'Allievo, leggi e scrivi!|Scolaro, leggi e scrivi!', 'v_pres n2 v_imper'],
 ["Filia, veni in_hortum et rosas carpe!", "Figlia, vieni nell'orto e cogli le rose!|Figlia, vieni in giardino e cogli le rose!|Figlia, vieni nel giardino e cogli le rose!", 'v_pres n1 n2 compl v_imper'],
@@ -85,7 +86,7 @@ const BANK = [
 ['Puella amicam suam vocat.', 'La fanciulla chiama la sua amica.|La ragazza chiama la sua amica.', 'v_pres n1 pron_pers', 'Suus è riflessivo: si riferisce al soggetto della frase.'],
 ['Servi dominum suum timent.', 'I servi temono il loro padrone.|Gli schiavi temono il loro padrone.', 'v_pres n2 pron_pers'],
 ['Venite mecum in_hortum!', "Venite con me nell'orto!|Venite con me in giardino!|Venite con me nel giardino!", 'v_pres n2 compl v_imper pron_pers', 'Mecum = cum me: la preposizione si attacca dopo il pronome.'],
-['Amici mei me saepe visitant.', 'I miei amici mi visitano spesso.|I miei amici mi vengono a trovare spesso.|I miei amici vengono spesso a trovarmi.', 'v_pres n2 pron_pers'],
+['Amici mei me saepe visitant.', 'I miei amici mi visitano spesso.|I miei amici mi vengono a trovare spesso.|I miei amici vengono spesso a trovarmi.', 'v_pres n2 pron_pers', '', 'mei=meus'],
 ['Tibi gratias ago.', 'Ti ringrazio.|Ti rendo grazie.', 'v_pres n1 pron_pers', 'Gratias agere + dativo: ringraziare qualcuno.'],
 ['Nos patriam nostram amamus, vos vestram.', 'Noi amiamo la nostra patria, voi la vostra.', 'v_pres n1 pron_pers'],
 // --- Passivo
@@ -105,7 +106,7 @@ const BANK = [
 ['Hieme agricolae non arant.', "In inverno gli agricoltori non arano.|D'inverno i contadini non arano.|In inverno i contadini non arano.", 'v_pres n1 n3 compl', 'Hieme è ablativo semplice: complemento di tempo determinato.'],
 ['Homines pacem cupiunt.', 'Gli uomini desiderano la pace.', 'v_pres n3'],
 ['Consul copias in_hostium_fines ducit.', 'Il console conduce le truppe nel territorio dei nemici.|Il console guida le truppe nel territorio nemico.|Il console conduce le truppe nel territorio nemico.', 'v_pres n1 n3 compl', 'Fines al plurale significa «territorio».'],
-['Nomen regis erat Numa.', 'Il nome del re era Numa.', 'v_pres n1 n3 v_if'],
+['Nomen regis erat Numa.', 'Il nome del re era Numa.', 'v_pres n1 n3 v_if', '', 'regis=rex'],
 ['Canes greges ovium custodiunt.', 'I cani custodiscono i greggi di pecore.|I cani sorvegliano i greggi delle pecore.|I cani custodiscono i greggi delle pecore.', 'v_pres n3'],
 ['Navis ad_litus appropinquat.', 'La nave si avvicina alla spiaggia.|La nave si avvicina al lido.', 'v_pres n3 compl'],
 ['Miles vulnus in_capite habet.', 'Il soldato ha una ferita alla testa.|Il soldato ha una ferita sulla testa.|Il soldato ha una ferita nella testa.', 'v_pres n3 compl'],
@@ -149,7 +150,7 @@ const BANK = [
 // --- Temporali e causali
 ['Postquam hostes fugerunt, Caesar castra movit.', "Dopo che i nemici fuggirono, Cesare mosse l'accampamento.|Dopo che i nemici furono fuggiti, Cesare levò il campo.|Dopo che i nemici fuggirono, Cesare spostò l'accampamento.|Dopo che i nemici furono fuggiti, Cesare mosse l'accampamento.", 'v_pres n2 n3 v_perf s_sub'],
 ['Discipuli laeti sunt, quod magister eos laudavit.', 'Gli allievi sono contenti, perché il maestro li ha lodati.|Gli scolari sono lieti perché il maestro li ha lodati.|Gli allievi sono contenti poiché il maestro li lodò.|Gli allievi sono contenti perché il maestro li ha lodati.', 'v_pres n2 agg1 v_perf pron_dim s_sub'],
-['Ubi Caesar advenit, hostes fugerunt.', 'Quando Cesare arrivò, i nemici fuggirono.|Appena Cesare giunse, i nemici fuggirono.|Non appena Cesare arrivò, i nemici fuggirono.|Quando Cesare giunse, i nemici fuggirono.', 'v_pres n3 v_perf s_sub'],
+['Ubi Caesar advenit, hostes fugerunt.', 'Quando Cesare arrivò, i nemici fuggirono.|Appena Cesare giunse, i nemici fuggirono.|Non appena Cesare arrivò, i nemici fuggirono.|Quando Cesare giunse, i nemici fuggirono.', 'v_pres n3 v_perf s_sub', '', 'advenit=@perf'],
 ['Dum pueri ludunt, ancillae cenam parant.', 'Mentre i fanciulli giocano, le ancelle preparano la cena.|Mentre i bambini giocano, le serve preparano la cena.|Mentre i ragazzi giocano, le ancelle preparano la cena.', 'v_pres n1 n2 s_sub'],
 ['Si amicos habes, felix es.', 'Se hai amici, sei felice.|Se hai degli amici, sei felice.', 'v_pres n2 agg2 s_sub'],
 ['Quia fortes erant, milites hostes vicerunt.', 'Poiché erano coraggiosi, i soldati vinsero i nemici.|I soldati vinsero i nemici perché erano valorosi.|Poiché erano valorosi, i soldati vinsero i nemici.', 'v_pres n3 agg2 v_if v_perf s_sub'],
@@ -163,14 +164,14 @@ const BANK = [
 ['Quis te vocavit?', 'Chi ti ha chiamato?|Chi ti chiamò?', 'v_pres pron_pers v_perf pron_rel'],
 // --- Comparativi e superlativi
 ['Roma maior est quam Tusculum.', 'Roma è più grande di Tuscolo.', 'v_pres n1 n2 agg1 comp'],
-['Nihil est amicitia pulchrius.', "Niente è più bello dell'amicizia.|Nulla è più bello dell'amicizia.", 'v_pres n1 agg1 comp', 'Amicitia è ablativo di paragone: sostituisce quam + nominativo.'],
+['Nihil est amicitia pulchrius.', "Niente è più bello dell'amicizia.|Nulla è più bello dell'amicizia.", 'v_pres n1 agg1 comp', 'Amicitia è ablativo di paragone: sostituisce quam + nominativo.', 'amicitia=@abl'],
 ['Fortissimi omnium Gallorum sunt Belgae.', 'I più coraggiosi di tutti i Galli sono i Belgi.|Di tutti i Galli i più forti sono i Belgi.|I più valorosi di tutti i Galli sono i Belgi.|I più forti di tutti i Galli sono i Belgi.', 'v_pres n1 n2 agg2 comp', 'Superlativo relativo con il genitivo partitivo.'],
 ['Athenae erant clarissima urbs Graeciae.', 'Atene era la città più famosa della Grecia.|Atene era la più famosa città della Grecia.|Atene era la città più celebre della Grecia.|Atene era la più celebre città della Grecia.', 'v_pres n1 agg1 n3 v_if comp', 'Athenae è un plurale con significato singolare.'],
 ['Certa pax melior est quam incerta victoria.', 'Una pace sicura è migliore di una vittoria incerta.|Una pace certa è meglio di una vittoria incerta.|È migliore una pace sicura che una vittoria incerta.|Una pace certa è migliore di una vittoria incerta.', 'v_pres n1 agg1 n3 comp'],
 ['Hic puer altior est quam pater.', 'Questo fanciullo è più alto del padre.|Questo ragazzo è più alto di suo padre.|Questo ragazzo è più alto del padre.|Questo bambino è più alto del padre.', 'v_pres n2 agg1 n3 pron_dim comp'],
 ['Alpes altissimi montes sunt.', 'Le Alpi sono monti altissimi.|Le Alpi sono altissime montagne.|Le Alpi sono montagne altissime.|Le Alpi sono altissimi monti.', 'v_pres agg1 n3 comp'],
 // --- Irregolari
-['Volo, sed non possum.', 'Voglio, ma non posso.', 'v_pres v_poss v_irr'],
+['Volo, sed non possum.', 'Voglio, ma non posso.', 'v_pres v_poss v_irr', '', 'volo=volo@v_irr'],
 ['Pueri domum eunt.', 'I fanciulli vanno a casa.|I ragazzi vanno a casa.|I bambini vanno a casa.', 'v_pres n2 n45 compl v_irr'],
 ['Noli timere!', 'Non temere!|Non avere paura!', 'v_pres v_imper v_irr', 'Noli/nolite + infinito: imperativo negativo.'],
 ['Milites arma ferunt.', 'I soldati portano le armi.', 'v_pres n2 n3 v_irr'],
@@ -178,7 +179,7 @@ const BANK = [
 ['Quid fit?', 'Che cosa succede?|Che cosa accade?|Che succede?|Che cosa avviene?', 'v_pres pron_rel v_irr'],
 ['Legati Romam redierunt.', 'Gli ambasciatori tornarono a Roma.|Gli ambasciatori sono tornati a Roma.|Gli ambasciatori ritornarono a Roma.', 'v_pres n1 n2 compl v_perf v_irr', 'Romam: moto a luogo con nome di città, senza preposizione.'],
 ['Hannibal cum_exercitu Alpes transiit.', "Annibale attraversò le Alpi con l'esercito.|Annibale con l'esercito attraversò le Alpi.|Annibale ha attraversato le Alpi con l'esercito.", 'v_pres n3 n45 compl v_perf v_irr'],
-['Si vis pacem, para bellum.', 'Se vuoi la pace, prepara la guerra.', 'v_pres n2 n3 v_imper s_sub v_irr', 'Vis qui è la 2ª persona di volo («vuoi»), non il nome vis («forza»).'],
+['Si vis pacem, para bellum.', 'Se vuoi la pace, prepara la guerra.', 'v_pres n2 n3 v_imper s_sub v_irr', 'Vis qui è la 2ª persona di volo («vuoi»), non il nome vis («forza»).', 'vis=volo@v_irr'],
 // --- Deponenti
 ['Caesar milites hortatur.', 'Cesare esorta i soldati.|Cesare incoraggia i soldati.', 'v_pres n3 v_dep', 'Hortatur ha forma passiva ma significato attivo.'],
 ['Romani hostes sequebantur.', 'I Romani inseguivano i nemici.|I Romani seguivano i nemici.', 'v_pres n2 n3 v_if v_dep'],
@@ -190,7 +191,7 @@ const BANK = [
 ['Hostes castra nostra aggressi sunt.', "I nemici assalirono il nostro accampamento.|I nemici hanno assalito il nostro accampamento.|I nemici attaccarono il nostro accampamento.", 'v_pres n2 n3 pron_pers v_perf v_dep'],
 // --- Participio e ablativo assoluto
 ['Milites, hostes videntes, fugerunt.', 'I soldati, vedendo i nemici, fuggirono.|Vedendo i nemici, i soldati fuggirono.|I soldati fuggirono vedendo i nemici.', 'v_pres n3 v_perf v_part', 'Il participio presente esprime un’azione contemporanea.'],
-['Urbe capta, hostes fugerunt.', 'Presa la città, i nemici fuggirono.|Dopo che la città fu presa, i nemici fuggirono.|Conquistata la città, i nemici fuggirono.|Dopo che la città fu conquistata, i nemici fuggirono.', 'v_pres n3 v_perf v_part', 'Ablativo assoluto: urbe capta = «presa la città».'],
+['Urbe capta, hostes fugerunt.', 'Presa la città, i nemici fuggirono.|Dopo che la città fu presa, i nemici fuggirono.|Conquistata la città, i nemici fuggirono.|Dopo che la città fu conquistata, i nemici fuggirono.', 'v_pres n3 v_perf v_part', 'Ablativo assoluto: urbe capta = «presa la città».', 'capta=@abl'],
 ['Caesare duce, Romani Gallos vicerunt.', 'Sotto il comando di Cesare, i Romani vinsero i Galli.|Con Cesare come comandante, i Romani vinsero i Galli.|Essendo Cesare comandante, i Romani vinsero i Galli.|Sotto la guida di Cesare, i Romani vinsero i Galli.', 'v_pres n2 n3 v_perf v_part', 'Ablativo assoluto nominale: nome + nome, senza participio.'],
 ['Sole oriente, agricolae ad_agros properant.', 'Al sorgere del sole, i contadini si affrettano verso i campi.|Mentre sorge il sole, gli agricoltori si affrettano verso i campi.|Al sorgere del sole, gli agricoltori si affrettano verso i campi.', 'v_pres n1 n2 n3 compl v_dep v_part'],
 ['Puer a_matre laudatus laetus erat.', 'Il fanciullo, lodato dalla madre, era contento.|Il bambino, lodato dalla madre, era felice.|Il ragazzo, lodato dalla madre, era lieto.|Il fanciullo lodato dalla madre era contento.', 'v_pres n2 agg1 n3 compl v_if v_pass v_perf v_part', 'Participio congiunto: laudatus concorda con puer.'],
@@ -199,7 +200,7 @@ const BANK = [
 // --- Infinitiva
 ['Scio te verum dicere.', 'So che tu dici il vero.|So che dici la verità.|So che tu dici la verità.|So che dici il vero.', 'v_pres agg1 pron_pers v_inf', 'Te è il soggetto in accusativo dell’infinitiva.'],
 ['Caesar dixit hostes fugisse.', 'Cesare disse che i nemici erano fuggiti.|Cesare ha detto che i nemici erano fuggiti.|Cesare disse che i nemici fuggirono.', 'v_pres n3 v_perf v_inf', 'L’infinito perfetto indica anteriorità rispetto alla reggente.'],
-['Galli putabant Romanos victuros esse.', 'I Galli pensavano che i Romani avrebbero vinto.|I Galli ritenevano che i Romani avrebbero vinto.', 'v_pres n2 v_if v_part v_inf'],
+['Galli putabant Romanos victuros esse.', 'I Galli pensavano che i Romani avrebbero vinto.|I Galli ritenevano che i Romani avrebbero vinto.', 'v_pres n2 v_if v_part v_inf', '', 'victuros=vinco'],
 ['Constat Romam a_Romulo conditam esse.', 'È noto che Roma fu fondata da Romolo.|Si sa che Roma è stata fondata da Romolo.|È noto che Roma è stata fondata da Romolo.', 'v_pres n1 n2 compl v_pass v_perf v_part v_inf'],
 ['Nuntius narravit urbem captam esse.', 'Il messaggero raccontò che la città era stata presa.|Il messaggero riferì che la città era stata conquistata.|Il messaggero raccontò che la città era stata conquistata.', 'v_pres n2 n3 v_pass v_perf v_part v_inf'],
 ['Spero vos venturos esse.', 'Spero che voi verrete.|Spero che verrete.', 'v_pres pron_pers v_part v_inf'],

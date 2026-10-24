@@ -1,6 +1,8 @@
 /* VERTO — generatore di frasi latino/italiano.
    Le forme latine vengono dal motore morfologico; l'italiano da VertoIt.
-   Ogni frase usa solo gli argomenti scelti: i tag raccolti durante la costruzione vengono verificati alla fine. */
+   Ogni frase usa solo gli argomenti scelti: i tag raccolti durante la costruzione vengono verificati alla fine.
+   Ogni forma scelta viene registrata (traccia): la frase esce con l'analisi esatta di ogni parola, così si possono
+   controllare il vocabolario (parole incontrate, al massimo una nuova) e le forme ammesse dalla lezione. */
 (function (root) {
   'use strict';
   const E = root.VertoEngine, IT = root.VertoIt, D = root.VERTO_GEN_DATA;
@@ -9,7 +11,7 @@
   const pick = (a) => a[rnd(a.length)];
   const chance = (p) => rand() < p;
   const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
-  const lower = (s) => s.charAt(0).toLowerCase() + s.slice(1);
+  const uniq = (a) => [...new Set(a)];
 
   /* ---------- Lessico ---------- */
   const lex = (k, head, filt) => E.LEX.find((x) => x.k === k && x.head === head && (!filt || x.lemma.includes(filt)));
@@ -69,6 +71,29 @@
     return o;
   }
 
+  /* ---------- Vocabolario, traccia, forme ammesse ---------- */
+  // CTX: { T, lex (Set di uid o null), maxNew, newOK(e), formOK(e, key), tenses, nums(N) } della richiesta in corso
+  let CTX = { T: new Set() };
+  let TR = [];            // forme scelte nel tentativo in corso: { e, key, f }
+  const NEWS = new Set(); // parole nuove già usate nel tentativo
+  const known = (e) => !CTX.lex || !e || CTX.lex.has(e.uid);
+  const knownU = (uid) => !CTX.lex || CTX.lex.has(uid);
+  // fra i candidati restano le parole già incontrate; ogni tanto, se la lezione lo consente, una parola nuova
+  function lexFilter(list, getE, pNew = 0.25) {
+    if (!CTX.lex) return list;
+    const k = list.filter((x) => known(getE(x)) || NEWS.has(getE(x).uid));
+    if (NEWS.size < (CTX.maxNew || 0) && (!k.length || chance(pNew))) {
+      const u = list.filter((x) => !known(getE(x)) && (!CTX.newOK || CTX.newOK(getE(x))));
+      if (u.length) return u;
+    }
+    return k;
+  }
+  const mark = (e) => { if (e && !known(e)) NEWS.add(e.uid); };
+  const trace = (e, key, f) => { if (f && e) TR.push({ e, key, f }); return f; };
+  // parola scritta direttamente (preposizioni, congiunzioni, avverbi)
+  const lit = (w, uid, key = 'i') => trace(E.BY_UID.get(uid), key, w);
+  const caseOK = (N, c, n) => !CTX.formOK || CTX.formOK(N.e, 'n:' + c + ':' + (n || 's')) || (!n && CTX.formOK(N.e, 'n:' + c + ':p'));
+
   /* ---------- Scelte e controlli ---------- */
   function matches(N, spec) {
     if (!spec) return false;
@@ -83,41 +108,47 @@
   function nounOK(ctx, N) { return ctx.T.has(N.t); }
   function adjFits(A, N) { if ((N.tags.has('col') || N.tags.has('gent')) && !A.spec.includes('=' + N.head)) return false; return matches(N, A.spec); }
   function nounsFor(ctx, spec, o = {}) {
-    return NOUNS.filter((N) => nounOK(ctx, N) && matches(N, spec) && !(o.ex || []).includes(N.head) && (!o.subj || !N.opts.nosubj) && (!o.filter || o.filter(N)) && (!o.noProper || !N.proper) && (!o.noCity || !(N.tags.has('C') || N.tags.has('R'))));
+    const c = NOUNS.filter((N) => nounOK(ctx, N) && matches(N, spec) && !(o.ex || []).includes(N.head) && (!o.subj || !N.opts.nosubj) && (!o.filter || o.filter(N)) && (!o.noProper || !N.proper) && (!o.noCity || !(N.tags.has('C') || N.tags.has('R'))));
+    return lexFilter(c, (N) => N.e, o.pNew);
   }
   function chooseNum(N, pref) {
     if (!N.latPl) return 's';
     if (!N.latSg) return 'p';
+    const only = CTX.nums ? CTX.nums(N) : null;
+    if (only) return only;
     if (pref) return pref;
     return chance(N.opts.plp ? 0.75 : N.opts.sgp ? 0.12 : 0.45) ? 'p' : 's';
   }
   let npSeq = 0;
-  function mkNP(N, o = {}) { return { id: npSeq++, N, num: o.num || chooseNum(N, o.numPref), adj: null, deg: 'pos', gen: null, poss: null, dem: null, multus: false }; }
+  function mkNP(N, o = {}) { mark(N.e); return { id: npSeq++, N, num: o.num || chooseNum(N, o.numPref), adj: null, deg: 'pos', gen: null, poss: null, dem: null, multus: false }; }
   function pickNP(ctx, spec, o = {}) {
     let c = nounsFor(ctx, spec, o);
     if (o.topic) { const f = c.filter((N) => N.t === o.topic); if (f.length) c = f; }
     if (!c.length) return null;
     return mkNP(pick(c), o);
   }
-  // forme latine
+  // forme latine (ogni forma usata entra nella traccia)
   function nounForm(N, c, n) {
     const f = N.e.forms.find((x) => x.c === c && x.n === n);
-    return f ? f.f : null;
+    return f ? trace(N.e, f.key, f.f) : null;
   }
   function adjForm(A, c, n, g, deg = 'pos') {
     const f = A.e.forms.find((x) => x.c === c && x.n === n && x.g === g && (x.deg || 'pos') === deg);
-    return f ? f.f : null;
+    if (f) mark(A.e);
+    return f ? trace(A.e, f.key, f.f) : null;
   }
   function pronForm(P, c, n, g) {
     const f = P.forms.find((x) => x.c === c && (n == null || x.n === n) && (g == null || x.g === g));
-    return f ? f.f : null;
+    return f ? trace(P, f.key, f.f) : null;
   }
   function vform(e, o) {
-    const voices = o.voice === 'pass' ? ['pass'] : ['act', 'dep', null, undefined];
+    const voices = o.voice === 'pass' ? ['pass'] : ['act', 'dep'];
     const f = e.forms.find((x) => x.mood === o.mood && x.tense === o.tense && voices.includes(x.voice) && (o.p == null || x.p === o.p) && (o.c == null || (x.c === o.c && x.n === o.n && x.g === o.g)));
-    return f ? f.f : null;
+    return f ? trace(e, f.key, f.f) : null;
   }
   const isDep = (e) => e.t === 'v_dep';
+  const HUMAN = ['H', 'wrk', 'srv', 'mil', 'kid', 'rul', 'tch', 'art', 'sea', 'fr', 'kin', 'par', 'old', 'msg', 'own', 'civ', 'foe', 'f'];
+  const personOK = (spec) => spec && spec.split(' ').some((t) => HUMAN.includes(t));
 
   /* ---------- Sintagmi: latino ---------- */
   const PRE_LA = new Set(['magnus', 'parvus', 'multus', 'omnis']);
@@ -140,16 +171,18 @@
   }
   const aab = (w) => (/^[aeiouh]/i.test(w) ? 'ab' : 'a');
   const eex = (w) => (/^[aeiouh]/i.test(w) ? 'ex' : 'e');
-  const PERS_ABL = ['mecum', 'tecum', null, 'nobiscum', 'vobiscum', null];
-  const PERS_DAT = ['mihi', 'tibi', null, 'nobis', 'vobis', null];
+  const PERS_ABL = [['mecum', 'ego', 'p:abl:s:-'], ['tecum', 'tu', 'p:abl:s:-'], null, ['nobiscum', 'ego', 'p:abl:p:-'], ['vobiscum', 'tu', 'p:abl:p:-'], null];
+  const PERS_DAT = [['mihi', 'ego', 'p:dat:s:-'], ['tibi', 'tu', 'p:dat:s:-'], null, ['nobis', 'ego', 'p:dat:p:-'], ['vobis', 'tu', 'p:dat:p:-'], null];
+  // preposizione di ogni complemento (null = ablativo o accusativo semplice)
+  const PREP_OF = { loc: ['in'], to: ['in', 'ad'], toH: ['ad'], from: ['e', 'ex', 'a', 'ab'], fromH: ['a', 'ab'], agent: ['a', 'ab'], per: ['per'], with: ['cum'], de: ['de'], pro: ['pro'], cause: ['propter'], manner: ['cum'] };
+  const prepKnown = (kind) => !PREP_OF[kind] || PREP_OF[kind].some(knownU);
   function laPP(pp, verb) {
     const k = pp.kind;
-    if (k === 'with' && pp.pron != null) return [PERS_ABL[pp.pron]];
-    if (k === 'to' && pp.home) return ['domum'];
+    if (k === 'with' && pp.pron != null) { const [w, u, key] = PERS_ABL[pp.pron]; return [lit(w, u, key)]; }
+    if (k === 'to' && pp.home) return [trace(DOMUS, 'n:acc:s', 'domum')];
     const N = pp.np.N;
     const city = N.opts.city;
-    const join = (prep, c) => { const x = laNP(pp.np, c); if (!x) return null; const first = x.core.join(' '); const toks = (prep ? [prep] : []).concat(x.core); return [toks.join('_')].concat(x.gen); void first; };
-    const first = (c) => nounForm(N, c, pp.np.num) || '';
+    const join = (prep, c) => { const x = laNP(pp.np, c); if (!x) return null; const toks = (prep ? [lit(prep, prep)] : []).concat(x.core); return [toks.join('_')].concat(x.gen); };
     switch (k) {
       case 'loc': return city ? [nounForm(N, 'loc', pp.np.num)] : join('in', 'abl');
       case 'to': {
@@ -173,10 +206,10 @@
       case 'dur': return join(null, 'acc');
       case 'manner': {
         const noun = nounForm(N, 'abl', 's');
-        if (pp.np.adj) return [[adjForm(pp.np.adj, 'abl', 's', N.g), 'cum', noun].join('_')];
-        return ['cum_' + noun];
+        if (pp.np.adj) return [[adjForm(pp.np.adj, 'abl', 's', N.g), lit('cum', 'cum'), noun].join('_')];
+        return [lit('cum', 'cum') + '_' + noun];
       }
-      default: void first; return null;
+      default: return null;
     }
   }
 
@@ -243,7 +276,7 @@
         return IT.withPrep(locPrepIt(N), np);
       case 'to': {
         if (city) return (verb && verb.toIt === 'per' ? 'per ' : verb && verb.toIt === 'verso' ? 'verso ' : 'a ') + np.body;
-        if (region) return verb && (verb.toIt === 'per' || verb.toIt === 'verso') ? IT.withPrep(verb.toIt, np) : 'in ' + np.body;
+        if (region) return verb && (verb.toIt === 'per' || verb.toIt === 'verso' || verb.toIt === 'a') ? IT.withPrep(verb.toIt, np) : 'in ' + np.body;
         const mode = (verb && verb.toIt) || 'loc';
         const natural = N.opts.ad ? IT.withPrep('a', np) : IT.withPrep(locPrepIt(N), np);
         if (mode === 'verso') return alt('p' + pp.np.id, [IT.withPrep('verso', np), natural]);
@@ -280,16 +313,16 @@
   function laFinite(e, tense, voice, p, sg, sn, mood = 'ind') {
     if ((tense === 'perf' || tense === 'ppf') && (voice === 'pass' || isDep(e))) {
       const part = vform(e, { mood: 'part', tense: 'perf', c: 'nom', n: sn, g: sg });
-      const aux = vform(SUM, { mood, tense: mood === 'cong' ? (tense === 'perf' ? 'pres' : 'impf') : (tense === 'perf' ? 'pres' : 'impf'), voice: 'act', p });
+      const aux = vform(SUM, { mood, tense: tense === 'perf' ? 'pres' : 'impf', voice: 'act', p });
       return part && aux ? [part, aux] : null;
     }
     const f = vform(e, { mood, tense, voice: isDep(e) ? 'act' : voice, p });
     return f ? [f] : null;
   }
   function laInfinitive(e, rel, voice, sg, sn) {
-    if (rel === 'post') { const pt = vform(e, { mood: 'part', tense: 'fut', c: 'acc', n: sn, g: sg }); return pt ? [pt, 'esse'] : null; }
+    if (rel === 'post') { const pt = vform(e, { mood: 'part', tense: 'fut', c: 'acc', n: sn, g: sg }); return pt ? [pt, lit('esse', 'sum', 'v:inf:pres:act')] : null; }
     if (rel === 'ant') {
-      if (voice === 'pass' || isDep(e)) { const pt = vform(e, { mood: 'part', tense: 'perf', c: 'acc', n: sn, g: sg }); return pt ? [pt, 'esse'] : null; }
+      if (voice === 'pass' || isDep(e)) { const pt = vform(e, { mood: 'part', tense: 'perf', c: 'acc', n: sn, g: sg }); return pt ? [pt, lit('esse', 'sum', 'v:inf:pres:act')] : null; }
       const f = vform(e, { mood: 'inf', tense: 'perf', voice: 'act' }); return f ? [f] : null;
     }
     const f = vform(e, { mood: 'inf', tense: 'pres', voice: isDep(e) ? 'act' : voice });
@@ -339,21 +372,23 @@
     const T = ctx.T, opts = [['pres', 3]];
     if (T.has('v_if')) opts.push(['impf', ctx.focus === 'v_if' ? 4 : 1.6], ['fut', ctx.focus === 'v_if' ? 3 : 1]);
     if (T.has('v_perf') && !o.noPerf) opts.push(['perf', ctx.focus === 'v_perf' ? 6 : 2.2]);
-    const tot = opts.reduce((a, b) => a + b[1], 0);
+    const ok = ctx.tenses ? opts.filter(([t]) => ctx.tenses.includes(t)) : opts;
+    const list = ok.length ? ok : opts;
+    const tot = list.reduce((a, b) => a + b[1], 0);
     let r = rand() * tot;
-    for (const [t, w] of opts) { r -= w; if (r <= 0) return t; }
+    for (const [t, w] of list) { r -= w; if (r <= 0) return t; }
     return 'pres';
   }
   function ppKindOK(ctx, kind) {
     if (!ctx.T.has('compl')) return false;
-    return true;
+    return prepKnown(kind);
   }
   function buildPP(ctx, verb, kind, ex, subj) {
     const spec = verb.pp[kind];
     const animal = subj && subj.N.tags.has('A');
-    if (kind === 'to' && /\bhome\b/.test(spec) && ctx.T.has(DOMUS.t) && chance(0.35)) return { kind, home: true };
-    if (kind === 'with' && ctx.T.has('pron_pers') && chance(0.3)) return { kind, pron: pick([0, 1, 3, 4]) };
-    const np = pickNP(ctx, spec, { ex, noCity: !['loc', 'to', 'from'].includes(kind) || animal, filter: animal && ['loc', 'to', 'from', 'per'].includes(kind) ? (N) => N.tags.has('nat') || N.tags.has('farm') || N.tags.has('green') : null });
+    if (kind === 'to' && /\bhome\b/.test(spec) && ctx.T.has(DOMUS.t) && known(DOMUS) && chance(0.35)) return { kind, home: true };
+    if (kind === 'with' && ctx.T.has('pron_pers') && chance(0.3)) { const ps = [0, 1, 3, 4].filter((p) => knownU(PERS_ABL[p][1])); if (ps.length) return { kind, pron: pick(ps) }; }
+    const np = pickNP(ctx, spec, { ex, noCity: !['loc', 'to', 'from'].includes(kind) || animal, filter: (N) => (!animal || !['loc', 'to', 'from', 'per'].includes(kind) || N.tags.has('nat') || N.tags.has('farm') || N.tags.has('green')) && (!CTX.formOK || ['loc', 'to', 'from'].includes(kind) && N.opts.city || caseOK(N, ['to', 'toH', 'per', 'cause', 'dur'].includes(kind) ? 'acc' : 'abl')) });
     if (!np) return null;
     if (kind === 'loc' && (np.N.tags.has('R'))) np.num = 's';
     return { kind, np };
@@ -367,17 +402,18 @@
     const forceAdj = o.forceAdj || (ctx.focus === 'agg1' || ctx.focus === 'agg2' ? ctx.focus : null);
     if (adjTopics.length && (forceAdj || chance(0.35 * lite))) {
       for (const np of shuffle(free)) {
-        const cand = ADJS.filter((A) => T.has(A.t) && adjFits(A, np.N) && (!forceAdj || A.t === forceAdj));
-        if (cand.length) { np.adj = pick(cand); break; }
+        const cand = lexFilter(ADJS.filter((A) => T.has(A.t) && adjFits(A, np.N) && (!forceAdj || A.t === forceAdj)), (A) => A.e, 0.15);
+        if (cand.length) { np.adj = pick(cand); mark(np.adj.e); break; }
       }
     }
     // dimostrativo
     if (T.has('pron_dim') && (o.forceDem || ctx.focus === 'pron_dim' || chance(0.15 * lite))) {
       const c = free.filter((np) => !np.poss);
-      if (c.length) pick(c).dem = pick(['hic', 'ille']);
+      const dems = ['hic', 'ille'].filter(knownU);
+      if (c.length && dems.length) pick(c).dem = pick(dems);
     }
     // molti
-    if (T.has(MULTUS.t) && chance(0.12 * lite)) {
+    if (T.has(MULTUS.t) && known(MULTUS) && chance(0.12 * lite)) {
       const c = free.filter((np) => np.num === 'p' && !np.dem && !np.poss && !np.adj && np.N.latPl && np.N.it.every((v) => !v.num));
       if (c.length) pick(c).multus = true;
     }
@@ -392,8 +428,8 @@
     if (!np || np.N.proper || np.N.opts.city || np.N.opts.reg) return;
     const rule = GEN_OWN.find(([f]) => f(np.N));
     if (!rule) return;
-    const g = pickNP(ctx, rule[1], { ex: ex.concat([np.N.head]), noCity: false });
-    if (g && !(g.N.opts.city && false)) np.gen = g;
+    const g = pickNP(ctx, rule[1], { ex: ex.concat([np.N.head]), noCity: false, filter: (N) => caseOK(N, 'gen') });
+    if (g) np.gen = g;
   }
   function addPoss(ctx, np, subjP, subjNum, passive) {
     if (!np || np.N.proper || np.N.opts.city || np.N.opts.reg || np.dem || np.gen || np.multus) return false;
@@ -402,6 +438,7 @@
     if (subjP != null && map[subjP]) np.poss = map[subjP];
     else if (!passive && chance(0.7)) { np.poss = 'suus'; np.possPl = subjNum === 'p'; }
     else np.poss = pick(['meus', 'tuus', 'noster', 'vester']);
+    if (!knownU(np.poss)) { np.poss = null; return false; }
     return true;
   }
 
@@ -411,14 +448,17 @@
     if (o.verbFilter) verbs = verbs.filter(o.verbFilter);
     if (o.forceDep) verbs = verbs.filter((v) => v.e.t === 'v_dep');
     else if (o.forceIrr) verbs = verbs.filter((v) => v.e.t === 'v_irr');
-    if (o.voice === 'pass') verbs = verbs.filter((v) => v.pass && v.o && !isDep(v.e) && (!o.noPassPerf || true));
+    if (o.voice === 'pass') verbs = verbs.filter((v) => v.pass && v.o && !isDep(v.e));
     if (o.needObj) verbs = verbs.filter((v) => v.o);
     if (o.intransitive) verbs = verbs.filter((v) => !v.o);
     if (o.forcePP) verbs = verbs.filter((v) => v.pp);
     if (!T.has('compl')) verbs = verbs.filter((v) => !v.req);
+    verbs = lexFilter(verbs, (v) => v.e, 0.25);
     for (const verb of shuffle(verbs).slice(0, 25)) {
+      const before = new Set(NEWS);
       const plan = tryVerb(ctx, verb, o);
-      if (plan) return plan;
+      if (plan) { mark(verb.e); return plan; }
+      NEWS.clear(); before.forEach((u) => NEWS.add(u));
     }
     return null;
   }
@@ -431,35 +471,39 @@
     const ex = (o.ex || []).slice();
     // soggetto
     const sSpec = voice === 'pass' ? verb.o : verb.s;
+    const canPerson = !o.noPerson && voice === 'act' && personOK(verb.s);
     if (o.subjNP) {
       if (!matches(o.subjNP.N, sSpec)) return null;
       plan.subj = o.subjNP;
       if (o.fixedSubj) plan.subj.fixed = true;
-    } else if (!o.noPerson && voice === 'act' && /\bH\b/.test(verb.s) && (o.person || chance(0.12))) {
+    } else if (canPerson && (o.person != null || chance(0.12))) {
       plan.p = o.person != null ? o.person : pick([0, 1, 3, 4]);
     } else {
-      const np = pickNP(ctx, sSpec, { ex, subj: true, topic: o.topic, filter: o.subjFilter, noCity: true });
-      if (!np) return null;
-      plan.subj = np;
+      const np = o.person != null ? null : pickNP(ctx, sSpec, { ex, subj: true, topic: o.topic, filter: (N) => (!o.subjFilter || o.subjFilter(N)) && caseOK(N, 'nom'), noCity: true });
+      if (np) plan.subj = np;
+      else if (canPerson) plan.p = o.person != null ? o.person : pick([0, 1, 2, 3, 4, 5]);
+      else return null;
     }
     if (plan.subj) { plan.p = plan.subj.num === 's' ? 2 : 5; ex.push(plan.subj.N.head); }
     // oggetto
     if (voice === 'act' && verb.o) {
+      const oc = verb.oc || 'acc';
       if (o.objNP) { if (!matches(o.objNP.N, verb.o)) return null; plan.obj = o.objNP; }
       else if (!o.omitObj) {
-        const np = o.objSpec ? pickNP(ctx, o.objSpec, { ex, filter: (N) => matches(N, verb.o) }) : pickNP(ctx, verb.o, { ex, topic: plan.subj && plan.subj.N.t === o.topic ? null : o.topic, noCity: !/\bC\b/.test(verb.o) });
-        if (!np) return null;
-        plan.obj = np;
+        const filter = (N) => caseOK(N, oc) && (!o.objSpec || matches(N, verb.o));
+        const np = o.objSpec ? pickNP(ctx, o.objSpec, { ex, filter }) : pickNP(ctx, verb.o, { ex, filter, topic: plan.subj && plan.subj.N.t === o.topic ? null : o.topic, noCity: !/\bC\b/.test(verb.o) });
+        if (!np && !verb.oopt) return null;
+        if (np && verb.oopt && !o.needObj && chance(0.12)) plan.obj = null; else plan.obj = np;
       }
       if (plan.obj) ex.push(plan.obj.N.head);
     }
     // dativo
     if (verb.d && voice === 'act' && (verb.dreq || chance(0.5))) {
-      if (T.has('pron_pers') && !o.noDatPron && chance(ctx.focus === 'pron_pers' ? 0.5 : 0.25)) {
-        const opts = [0, 1, 3, 4].filter((p) => p !== plan.p);
-        plan.datPron = pick(opts);
+      const datPs = [0, 1, 3, 4].filter((p) => p !== plan.p && knownU(PERS_DAT[p][1]));
+      if (T.has('pron_pers') && !o.noDatPron && datPs.length && chance(ctx.focus === 'pron_pers' ? 0.5 : 0.25)) {
+        plan.datPron = pick(datPs);
       } else {
-        const np = pickNP(ctx, verb.d, { ex, noCity: true, noProper: false });
+        const np = pickNP(ctx, verb.d, { ex, noCity: true, noProper: false, filter: (N) => caseOK(N, 'dat') });
         if (!np && verb.dreq) return null;
         if (np) { plan.dat = np; ex.push(np.N.head); }
       }
@@ -477,22 +521,22 @@
     } else if (verb.req) return null;
     // complemento facoltativo di tempo, modo, causa
     if (T.has('compl') && !o.noPP && plan.pps.length < 2 && chance(o.lite ? 0.08 : ctx.focus === 'compl' ? 0.5 : 0.22)) {
-      const kinds = Object.keys(D.EXTRA).filter((k) => D.EXTRA[k].split(' ').includes(verb.la));
+      const kinds = Object.keys(D.EXTRA).filter((k) => D.EXTRA[k].split(' ').includes(verb.la) && prepKnown(k));
       const k = kinds.length ? pick(kinds) : null;
       let np = null;
-      if (k === 'time') { np = pickNP(ctx, 'season =nox', { ex }); if (np) np.num = 's'; }
+      if (k === 'time') { np = pickNP(ctx, 'season =nox', { ex, filter: (N) => caseOK(N, 'abl', 's') }); if (np) np.num = 's'; }
       if (k === 'manner') {
-        np = pickNP(ctx, 'man', { ex }); if (np) { np.num = 's'; const mg = ADJS.find((A) => A.head === 'magnus'); if (mg && T.has(mg.t) && chance(0.4)) np.adj = mg; }
+        np = pickNP(ctx, 'man', { ex, filter: (N) => caseOK(N, 'abl', 's') }); if (np) { np.num = 's'; const mg = ADJS.find((A) => A.head === 'magnus'); if (mg && T.has(mg.t) && known(mg.e) && chance(0.4)) np.adj = mg; }
       }
-      if (k === 'cause') np = pickNP(ctx, 'fight weather bad', { ex });
-      if (k === 'dur' && T.has(MULTUS.t) && (tense === 'impf' || tense === 'perf')) { np = pickNP(ctx, '=annus =dies', { ex }); if (np) { np.num = 'p'; np.multus = true; } }
+      if (k === 'cause') np = pickNP(ctx, 'fight weather bad', { ex, filter: (N) => caseOK(N, 'acc') });
+      if (k === 'dur' && T.has(MULTUS.t) && known(MULTUS) && (tense === 'impf' || tense === 'perf')) { np = pickNP(ctx, '=annus =dies', { ex }); if (np) { np.num = 'p'; np.multus = true; } }
       if (np) { plan.pps.push({ kind: k, np, extra: true }); ex.push(np.N.head); }
     }
     // agente / causa efficiente nel passivo
     if (voice === 'pass' && T.has('compl') && !o.noAgent && chance(0.6)) {
-      const np = pickNP(ctx, verb.s, { ex, noCity: true });
+      const np = prepKnown('agent') ? pickNP(ctx, verb.s, { ex, noCity: true, filter: (N) => caseOK(N, 'abl') }) : null;
       if (np && np.N.tags.has('H')) { plan.pps.unshift({ kind: 'agent', np }); ex.push(np.N.head); }
-      else if (verb.pp && verb.pp.instr) { const n2 = pickNP(ctx, verb.pp.instr, { ex }); if (n2) plan.pps.unshift({ kind: 'instr', np: n2 }); }
+      else if (verb.pp && verb.pp.instr) { const n2 = pickNP(ctx, verb.pp.instr, { ex, filter: (N) => caseOK(N, 'abl') }); if (n2) plan.pps.unshift({ kind: 'instr', np: n2 }); }
     }
     // decorazioni
     decorate(ctx, [plan.subj, plan.obj, plan.dat, ...plan.pps.filter((x) => !x.extra).map((x) => x.np)].filter(Boolean), o);
@@ -505,10 +549,10 @@
     }
     // avverbio e negazione
     if (!o.noAdv && !plan.pps.some((x) => x.extra) && chance(o.lite ? 0.08 : 0.25)) {
-      const advs = ADV.filter((a) => T.has(a.t) && a.tenses.includes(tense) && (!a.verbs || a.verbs.includes(verb.la)));
-      if (advs.length) plan.adv = pick(advs);
+      const advs = lexFilter(ADV.filter((a) => T.has(a.t) && a.tenses.includes(tense) && (!a.verbs || a.verbs.includes(verb.la))), (a) => E.BY_UID.get(a.la), 0.1);
+      if (advs.length) { plan.adv = pick(advs); mark(E.BY_UID.get(plan.adv.la)); }
     }
-    if (!o.noNeg && chance(o.lite ? 0.04 : 0.1)) plan.neg = true;
+    if (!o.noNeg && knownU('non') && chance(o.lite ? 0.04 : 0.1)) plan.neg = true;
     return plan;
   }
   function planTags(plan, tags) {
@@ -517,24 +561,23 @@
     plan.pps.forEach((pp) => { tags.add('compl'); if (pp.np) npTags(pp.np, tags); if (pp.home) tags.add(DOMUS.t); if (pp.pron != null) tags.add('pron_pers'); });
     if (plan.datPron != null) tags.add('pron_pers');
     if (plan.adv) tags.add(plan.adv.t);
-    if (plan.subj == null && plan.p !== 2 && plan.p !== 5) tags.add('v_pres');
   }
   // latino: {pre, subj, rest}
   function laClause(plan, o = {}) {
     const subjG = plan.subj ? plan.subj.N.g : 'm', subjN = plan.subj ? plan.subj.num : (plan.p >= 3 ? 'p' : 's');
     const pre = [], subj = [], rest = [];
-    if (plan.adv && plan.adv.pos === 'start') pre.push(plan.adv.la);
+    if (plan.adv && plan.adv.pos === 'start') pre.push(lit(plan.adv.la, plan.adv.la));
     if (plan.subj && !o.noSubj) { const x = laNP(plan.subj, 'nom'); if (!x) return null; subj.push(...x.core, ...x.gen); }
-    if (plan.datPron != null) rest.push(PERS_DAT[plan.datPron]);
+    if (plan.datPron != null) { const [w, u, key] = PERS_DAT[plan.datPron]; rest.push(lit(w, u, key)); }
     if (plan.dat) { const x = laNP(plan.dat, 'dat'); if (!x) return null; rest.push(...x.core, ...x.gen); }
     if (plan.obj && !o.noObj) { const x = laNP(plan.obj, plan.verb.oc || 'acc'); if (!x) return null; rest.push(...x.core, ...x.gen); }
     for (const pp of plan.pps) { const t = laPP(pp, plan.verb); if (!t || t.some((x) => !x)) return null; rest.push(...t); }
-    if (plan.adv && plan.adv.pos === 'mid') rest.push(plan.adv.la);
+    if (plan.adv && plan.adv.pos === 'mid') rest.push(lit(plan.adv.la, plan.adv.la));
     let vt;
     if (o.verbTokens) vt = o.verbTokens;
     else vt = laFinite(plan.verb.e, plan.tense, plan.voice, plan.p, subjG, subjN, plan.mood);
     if (!vt) return null;
-    if (plan.neg && !o.noNeg) rest.push('non');
+    if (plan.neg && !o.noNeg) rest.push(lit('non', 'non'));
     rest.push(...vt);
     return { pre, subj, rest };
   }
@@ -591,6 +634,33 @@
   }
 
   /* ---------- Costrutti ---------- */
+  const normW = (w) => E.norm(w.replace(/[^A-Za-zÀ-ÿāēīōūĀĒĪŌŪ]/g, ''));
+  // parole della frase con la loro analisi, nell'ordine (dalla traccia)
+  function tokensOf(tokens, T) {
+    const used = new Set();
+    const out = [];
+    tokens.forEach((tile, ti) => {
+      tile.split('_').forEach((raw) => {
+        const w = raw.replace(/[^A-Za-zÀ-ÿāēīōūĀĒĪŌŪ]/g, '');
+        if (!w) return;
+        const n = normW(w);
+        let k = TR.findIndex((x, i) => !used.has(i) && E.norm(x.f) === n);
+        if (k < 0) k = TR.findIndex((x) => E.norm(x.f) === n);
+        if (k >= 0) {
+          used.add(k);
+          const x = TR[k];
+          const f = x.e.forms.find((y) => y.key === x.key && E.norm(y.f) === n) || x.e.forms.find((y) => E.norm(y.f) === n);
+          out.push({ w, e: x.e, key: f ? f.key : x.key, q: f ? f.q : w, tile: ti });
+        } else {
+          const an = E.analyze(w).filter((a) => a.req.every((t) => T.has(t)));
+          if (!an.length) { out.push(null); return; }
+          const a = an.find((y) => y.e.k === 'i') || an[0];
+          out.push({ w, e: a.e, key: a.key, q: a.q || w, tile: ti });
+        }
+      });
+    });
+    return out;
+  }
   function finish(ctx, la, itFn, tags, tip, punct = '.') {
     const T = ctx.T;
     for (const t of tags) if (!T.has(t)) return null;
@@ -598,6 +668,18 @@
     if (!tokens.length || tokens.some((t) => /null|undefined/.test(t))) return null;
     // ogni parola deve essere riconosciuta e rientrare negli argomenti
     for (const tok of tokens) for (const w of tok.replace(/[,]/g, '').split('_')) { const r = E.reqOK(w, T); if (!r.known || !r.ok) return null; }
+    const words = tokensOf(tokens, T);
+    if (words.some((x) => !x)) return null;
+    // l'analisi esatta di ogni parola (non solo una lettura qualsiasi) deve stare negli argomenti scelti
+    for (const x of words) { const f = x.e.forms.find((y) => y.key === x.key && E.norm(y.f) === E.norm(x.w)); if (!f || !f.req.every((t) => T.has(t))) return null; }
+    // forme ammesse dalla lezione e vocabolario: al massimo una parola nuova
+    if (ctx.formOK && words.some((x) => !ctx.formOK(x.e, x.key))) return null;
+    let newWords = [];
+    if (ctx.lex) {
+      newWords = uniq(words.filter((x) => !ctx.lex.has(x.e.uid)).map((x) => x.e.uid));
+      if (newWords.length > (ctx.maxNew || 0)) return null;
+      if (ctx.newOK && newWords.some((u) => !ctx.newOK(E.BY_UID.get(u)))) return null;
+    }
     let laStr = tokens.join(' ').replace(/\s+,/g, ',');
     laStr = laStr.charAt(0).toUpperCase() + laStr.slice(1) + punct;
     const slots = [];
@@ -612,7 +694,9 @@
       if (f && !outs.includes(f)) outs.push(f);
     }
     const tg = [...tags];
-    return { la: laStr, it: outs, tags: tg, tip: tip || '' };
+    // le parole della frase con la loro analisi (la maiuscola iniziale la mette chi la mostra)
+    const toks = words.map((x) => ({ w: x.w, uid: x.e.uid, key: x.key, q: x.q, tile: x.tile }));
+    return { la: laStr, it: outs, tags: tg, tip: tip || '', tokens: toks, newWords };
   }
 
   function bBasic(ctx, o = {}) {
@@ -620,7 +704,34 @@
     if (!plan) return null;
     const la = laClause(plan); if (!la) return null;
     const tags = new Set(); planTags(plan, tags);
+    // domanda con cur («perché?»)
+    if (!o.noQ && knownU('cur') && plan.voice === 'act' && plan.mood === 'ind' && ['pres', 'impf', 'fut'].includes(plan.tense) && chance(o.q ? 1 : 0.1)) {
+      return finish(ctx, [lit('cur', 'cur'), ...joinLa(la)], (ch, reg) => 'Perché ' + joinIt(itClause(plan, ch, reg)), tags, 'Cur introduce una domanda: «perché?».', '?');
+    }
     return finish(ctx, joinLa(la), (ch, reg) => joinIt(itClause(plan, ch, reg)), tags, tipFor(plan, ctx.focus));
+  }
+
+  // due azioni dello stesso soggetto: «Laboro et canto», «Non dormio, sed vigilo» (con sed, solo azioni contrapposte)
+  const CONTRAST = [['dormio', 'vigilo'], ['rideo', 'lacrimo'], ['lacrimo', 'rideo'], ['canto', 'taceo'], ['clamo', 'taceo'], ['laboro', 'ludo'], ['ludo', 'laboro'], ['sedeo', 'ambulo'], ['ambulo', 'sedeo'], ['sedeo', 'curro'], ['laboro', 'dormio'], ['dormio', 'laboro'], ['pugno', 'fugio'], ['fugio', 'pugno'], ['curro', 'ambulo'], ['taceo', 'canto']];
+  function bCoord(ctx) {
+    const conj = ['et', 'sed'].filter(knownU);
+    if (!conj.length) return null;
+    const c = pick(conj);
+    const neg = c === 'sed';
+    if (neg && !knownU('non')) return null;
+    const c1 = clausePlan(ctx, { lite: true, noAdv: true, noNeg: true, noQ: true, noPP: true, verbFilter: neg ? (v) => CONTRAST.some(([a]) => a === v.la) : null });
+    if (!c1) return null;
+    if (neg) c1.neg = true;
+    const pair = neg ? CONTRAST.filter(([a]) => a === c1.verb.la).map(([, b]) => b) : null;
+    const c2 = clausePlan(ctx, { lite: true, noAdv: true, noNeg: true, noPP: true, tense: c1.tense, subjNP: c1.subj || undefined, person: c1.subj ? undefined : c1.p, verbFilter: (v) => v.e !== c1.verb.e && (c1.subj ? true : personOK(v.s)) && (!pair || pair.includes(v.la)), ex: [c1.obj && c1.obj.N.head].filter(Boolean) });
+    if (!c2) return null;
+    if (!c1.subj && c2.p !== c1.p) return null;
+    const l1 = laClause(c1), l2 = laClause(c2, { noSubj: true }); if (!l1 || !l2) return null;
+    const tags = new Set(); planTags(c1, tags); planTags(c2, tags);
+    const la1 = joinLa(l1);
+    if (neg) la1[la1.length - 1] += ',';
+    return finish(ctx, [...la1, lit(c, c), ...joinLa(l2)], (ch, reg) => joinIt(itClause(c1, ch, reg, { key: '1' })) + (neg ? ', ma ' : ' e ') + joinIt(itClause(c2, ch, reg, { key: '2' }), true), tags,
+      neg ? 'Non nega il primo verbo; sed («ma») introduce l’azione contrapposta.' : 'Et unisce due verbi con lo stesso soggetto.');
   }
 
   function bCopula(ctx, o = {}) {
@@ -628,23 +739,25 @@
     const tense = pickTense(ctx);
     const kinds = [];
     if (T.has('agg1') || T.has('agg2')) kinds.push('adj', 'adj');
-    if (T.has('compl')) kinds.push('loc', 'exist');
+    if (T.has('compl') && knownU('in')) kinds.push('loc', 'exist');
     if (!kinds.length) return null;
     const kind = o.kind || pick(kinds);
+    if ((kind === 'loc' || kind === 'exist') && !knownU('in')) return null;
     const tags = new Set(['v_pres']);
     tenseTags(tense, 'act', SUM, tags);
+    if (!known(SUM)) return null;
     const sumF = (p) => vform(SUM, { mood: 'ind', tense: SUMT[tense], voice: 'act', p });
     const itT = IT_TENSE[tense];
     if (kind === 'adj') {
       const adjT = o.forceAdj || (['agg1', 'agg2'].includes(ctx.focus) ? ctx.focus : null);
-      const cands = NOUNS.filter((N) => nounOK(ctx, N) && !N.opts.nosubj && !N.opts.city && !N.opts.reg && (!o.topic || N.t === o.topic));
+      const cands = lexFilter(NOUNS.filter((N) => nounOK(ctx, N) && !N.opts.nosubj && !N.opts.city && !N.opts.reg && (!o.topic || N.t === o.topic) && caseOK(N, 'nom')), (N) => N.e);
       for (const N of shuffle(cands).slice(0, 30)) {
-        const adjs = ADJS.filter((A) => T.has(A.t) && adjFits(A, N) && (!adjT || A.t === adjT) && A.head !== 'multus');
+        const adjs = lexFilter(ADJS.filter((A) => T.has(A.t) && adjFits(A, N) && (!adjT || A.t === adjT) && A.head !== 'multus'), (A) => A.e, 0.2);
         if (!adjs.length) continue;
         const A = pick(adjs);
         const np = mkNP(N);
-        decorate(ctx, [], {});
-        if (T.has('pron_dim') && (ctx.focus === 'pron_dim' || chance(0.2)) && !N.proper) np.dem = pick(['hic', 'ille']);
+        mark(A.e);
+        if (T.has('pron_dim') && (ctx.focus === 'pron_dim' || chance(0.2)) && !N.proper) { const dems = ['hic', 'ille'].filter(knownU); if (dems.length) np.dem = pick(dems); }
         const p = np.num === 's' ? 2 : 5;
         const sx = laNP(np, 'nom'); if (!sx) continue;
         const af = adjForm(A, 'nom', np.num, N.g); if (!af) continue;
@@ -664,16 +777,16 @@
       const pairs = shuffle(D.WHERE);
       let N = null, place = null;
       for (const [who, where] of pairs) {
-        const cand = nounsFor(ctx, who, { subj: true, noProper: true, noCity: true, filter: (x) => !x.tags.has('col') && !x.tags.has('gent') && (kind !== 'exist' || x.latPl || !x.latSg || true) });
+        const cand = nounsFor(ctx, who, { subj: true, noProper: true, noCity: true, filter: (x) => !x.tags.has('col') && !x.tags.has('gent') && caseOK(x, 'nom') });
         if (!cand.length) continue;
         const n0 = pick(cand);
-        const pl = pickNP(ctx, where, { ex: [n0.head], noCity: true });
+        const pl = pickNP(ctx, where, { ex: [n0.head], noCity: true, filter: (x) => caseOK(x, 'abl') });
         if (pl) { N = n0; place = pl; break; }
       }
       if (!N || !place) return null;
       if (place.N.opts.reg) place.num = 's';
       const np = mkNP(N, kind === 'exist' ? { numPref: chance(0.6) ? 'p' : 's' } : {});
-      if (kind === 'exist' && np.num === 'p' && T.has(MULTUS.t) && chance(0.5) && N.latPl && N.it.every((v) => !v.num)) np.multus = true;
+      if (kind === 'exist' && np.num === 'p' && T.has(MULTUS.t) && known(MULTUS) && chance(0.5) && N.latPl && N.it.every((v) => !v.num)) np.multus = true;
       if (kind === 'loc' && place.N.latSg && chance(0.8)) place.num = 's';
       const p = np.num === 's' ? 2 : 5;
       const sx = laNP(np, 'nom'); const pp = laPP({ kind: 'loc', np: place }); const sf = sumF(p);
@@ -699,15 +812,17 @@
   const SUP_IT = { bonus: ['ottimo', 'molto buono'], malus: ['pessimo', 'molto cattivo'], magnus: ['grandissimo', 'molto grande'], parvus: ['piccolissimo', 'molto piccolo'] };
   function bComp(ctx) {
     const T = ctx.T;
-    if (!T.has('comp')) return null;
-    const tense = chance(0.75) ? 'pres' : (T.has('v_if') ? 'impf' : 'pres');
-    const adjs = ADJS.filter((A) => T.has(A.t) && A.comp);
+    if (!T.has('comp') || !known(SUM)) return null;
+    const tense = chance(0.75) || (ctx.tenses && !ctx.tenses.includes('impf')) ? 'pres' : (T.has('v_if') ? 'impf' : 'pres');
+    const adjs = lexFilter(ADJS.filter((A) => T.has(A.t) && A.comp), (A) => A.e, 0.15);
     for (const A of shuffle(adjs).slice(0, 12)) {
-      const nouns = NOUNS.filter((N) => nounOK(ctx, N) && adjFits(A, N) && !N.opts.nosubj && !N.opts.reg);
+      const nouns = lexFilter(NOUNS.filter((N) => nounOK(ctx, N) && adjFits(A, N) && !N.opts.nosubj && !N.opts.reg && caseOK(N, 'nom')), (N) => N.e, 0);
       if (nouns.length < 2) continue;
       const sup = chance(0.35);
+      if (!sup && !knownU('quam')) continue;
       const N1 = pick(nouns);
       const np1 = mkNP(N1);
+      mark(A.e);
       const p = np1.num === 's' ? 2 : 5;
       const sf = vform(SUM, { mood: 'ind', tense, voice: 'act', p });
       const s1 = laNP(np1, 'nom');
@@ -731,7 +846,7 @@
       const np2 = mkNP(N2, { num: chance(0.7) ? np1.num : undefined });
       const s2 = laNP(np2, 'nom'); if (!s2) continue;
       npTags(np2, tags);
-      const la = [...s1.core, ...s1.gen, af, sf, 'quam', ...s2.core, ...s2.gen];
+      const la = [...s1.core, ...s1.gen, af, sf, lit('quam', 'quam'), ...s2.core, ...s2.gen];
       return finish(ctx, la, (ch, reg) => { const a = itNP(np1, ch, reg), b = itNP(np2, ch, reg); return itStr(a) + ' ' + IT.verb('essere', itT, { p, g: a.g, n: a.n }) + ' ' + itAdj(a.g, a.n, ch, reg, 'ca') + ' ' + IT.withPrep('di', b); }, tags, 'Quam introduce il secondo termine di paragone, nello stesso caso del primo.');
     }
     return null;
@@ -740,17 +855,18 @@
   function bImper(ctx) {
     const T = ctx.T;
     if (!T.has('v_imper')) return null;
-    const addr = pickNP(ctx, 'kid srv mil fr kin civ', { noProper: true, filter: (N) => !N.tags.has('col') && !N.tags.has('gent') });
+    const addr = pickNP(ctx, 'kid srv mil fr kin civ', { noProper: true, filter: (N) => !N.tags.has('col') && !N.tags.has('gent') && caseOK(N, 'voc') });
     if (!addr) return null;
     const pl = addr.num === 'p';
     const p = pl ? 4 : 1;
-    const negImp = T.has('v_irr') && chance(0.25);
+    const nolo = lex('v', 'nolo');
+    const negImp = T.has('v_irr') && known(nolo) && chance(0.25);
     const plan = clausePlan(ctx, { subjNP: addr, fixedSubj: true, tense: 'pres', noAdv: true, noNeg: true, noDatPron: true, verbFilter: (v) => !isDep(v.e) || negImp });
     if (!plan) return null;
     plan.p = p; plan.mood = 'imp';
     let vt;
     if (negImp) {
-      const noli = vform(lex('v', 'nolo'), { mood: 'imp', tense: 'pres', voice: 'act', p });
+      const noli = vform(nolo, { mood: 'imp', tense: 'pres', voice: 'act', p });
       const inf = laInfinitive(plan.verb.e, 'cont', 'act');
       if (!noli || !inf) return null;
       vt = [noli, ...inf];
@@ -775,18 +891,19 @@
 
   function bModal(ctx, o = {}) {
     const T = ctx.T;
-    let mods = MODALS.filter((m) => T.has(m.e.t) && (!o.modal || m.t === o.modal));
+    let mods = lexFilter(MODALS.filter((m) => T.has(m.e.t) && (!o.modal || m.t === o.modal)), (m) => m.e, 0.2);
     if (!mods.length) return null;
     const m = pick(mods);
+    mark(m.e);
     let tense = pickTense(ctx);
     if (isDep(m.e) && tense === 'perf' && !T.has('v_perf')) tense = 'pres';
-    const plan = clausePlan(ctx, { tense: 'pres', noAdv: true, noNeg: true, noDatPron: true, verbFilter: (v) => v.e.t !== 'v_dep' || T.has('v_dep') });
+    const plan = clausePlan(ctx, { tense: 'pres', noAdv: true, noNeg: true, noDatPron: true, noQ: true, verbFilter: (v) => v.e.t !== 'v_dep' || T.has('v_dep') });
     if (!plan) return null;
     const sg = plan.subj ? plan.subj.N.g : 'm', sn = plan.subj ? plan.subj.num : (plan.p >= 3 ? 'p' : 's');
     const inf = laInfinitive(plan.verb.e, 'cont', 'act'); if (!inf) return null;
     const mf = laFinite(m.e, tense, 'act', plan.p, sg, sn); if (!mf) return null;
-    const neg = !m.neg && chance(0.3);
-    const la = laClause(plan, { verbTokens: [...inf, ...(neg ? ['non'] : []), ...mf], noNeg: true });
+    const neg = !m.neg && knownU('non') && chance(0.3);
+    const la = laClause(plan, { verbTokens: [...inf, ...(neg ? [lit('non', 'non')] : []), ...mf], noNeg: true });
     if (!la) return null;
     const tags = new Set([m.e.t]); planTags(plan, tags); tenseTags(tense, 'act', m.e, tags);
     return finish(ctx, joinLa(la), (ch, reg) => joinIt(itClause(plan, ch, reg, {
@@ -800,22 +917,27 @@
   function bSumComp(ctx) {
     const T = ctx.T;
     if (!T.has('v_poss')) return null;
-    for (const S of shuffle(SUMCOMP)) {
+    for (const S of shuffle(lexFilter(SUMCOMP, (m) => m.e, 0.2))) {
       if (!T.has(S.e.t)) continue;
-      if (S.from && !T.has('compl')) continue;
+      if (S.from && !(T.has('compl') && prepKnown('from'))) continue;
       let tense = pickTense(ctx);
       if (S.la === 'absum' || S.la === 'adsum') tense = chance(0.7) ? 'pres' : (T.has('v_if') ? 'impf' : 'pres');
-      const subj = pickNP(ctx, S.s, { subj: true, noCity: true });
+      const subj = pickNP(ctx, S.s, { subj: true, noCity: true, filter: (N) => caseOK(N, 'nom') });
       if (!subj) continue;
-      const dat = S.d ? pickNP(ctx, S.d, { ex: [subj.N.head], noCity: true }) : null;
+      const dat = S.d ? pickNP(ctx, S.d, { ex: [subj.N.head], noCity: true, filter: (N) => caseOK(N, 'dat') }) : null;
       if (S.d && !dat) continue;
       const from = S.from ? pickNP(ctx, S.from, { ex: [subj.N.head], numPref: chance(0.8) ? 's' : 'p' }) : null;
       if (S.from && !from) continue;
+      mark(S.e);
       const p = subj.num === 's' ? 2 : 5;
       const vf = laFinite(S.e, tense, 'act', p, subj.N.g, subj.num); if (!vf) continue;
       const sx = laNP(subj, 'nom'); const dx = dat ? laNP(dat, 'dat') : null; const fx = from ? laPP({ kind: 'from', np: from }) : null;
       if (!sx || (dat && !dx) || (from && !fx)) continue;
-      if (fx && from.N.opts.city === undefined && !from.N.opts.ad) { fx[0] = fx[0].replace(/^e_/, 'a_').replace(/^ex_/, 'ab_'); }
+      if (fx && from.N.opts.city === undefined && !from.N.opts.ad) {
+        // absum vuole a / ab
+        const m = fx[0].match(/^(e|ex)_/);
+        if (m) { const ab = m[1] === 'e' ? 'a' : 'ab'; if (!knownU(ab)) continue; fx[0] = ab + fx[0].slice(m[1].length); lit(ab, ab); }
+      }
       const la = S.order === 'dat-first' ? [...dx.core, ...dx.gen, ...sx.core, ...sx.gen, ...vf] : [...sx.core, ...sx.gen, ...(dx ? [...dx.core, ...dx.gen] : []), ...(fx || []), ...vf];
       const tags = new Set([S.e.t]); tenseTags(tense, 'act', S.e, tags); npTags(subj, tags); npTags(dat, tags); if (from) { npTags(from, tags); tags.add('compl'); }
       return finish(ctx, la, (ch, reg) => {
@@ -839,39 +961,40 @@
   function bSub(ctx) {
     const T = ctx.T;
     if (!T.has('s_sub')) return null;
-    const kinds = ['dum', 'quod'];
-    if (T.has('v_perf')) kinds.push('postquam', 'ubi');
+    const kinds = ['dum', 'quod'].filter((k) => k === 'quod' ? (knownU('quod') || knownU('quia')) : knownU(k));
+    if (T.has('v_perf')) ['postquam', 'ubi'].filter(knownU).forEach((k) => kinds.push(k));
+    if (!kinds.length) return null;
     const kind = pick(kinds);
     if (kind === 'dum') {
-      const pastMain = T.has('v_if') && chance(0.4);
-      const c1 = clausePlan(ctx, { lite: true, tense: 'pres', noAdv: true, noNeg: true }); if (!c1) return null;
+      const pastMain = T.has('v_if') && (!ctx.tenses || ctx.tenses.includes('impf')) && chance(0.4);
+      const c1 = clausePlan(ctx, { lite: true, tense: 'pres', noAdv: true, noNeg: true, noQ: true }); if (!c1) return null;
       const ex = [c1.subj && c1.subj.N.head].filter(Boolean);
-      const c2 = clausePlan(ctx, { lite: true, tense: pastMain ? 'impf' : 'pres', noAdv: true, ex }); if (!c2) return null;
+      const c2 = clausePlan(ctx, { lite: true, tense: pastMain ? 'impf' : 'pres', noAdv: true, noQ: true, ex }); if (!c2) return null;
       const l1 = laClause(c1), l2 = laClause(c2); if (!l1 || !l2) return null;
       const tags = new Set(['s_sub']); planTags(c1, tags); planTags(c2, tags);
       const la1 = joinLa(l1); la1[la1.length - 1] += ',';
-      return finish(ctx, ['dum', ...la1, ...joinLa(l2)], (ch, reg) => 'Mentre ' + joinIt(itClause(c1, ch, reg, { key: '1', itTense: pastMain ? 'impf' : 'pres' })) + ', ' + joinIt(itClause(c2, ch, reg, { key: '2' })), tags, pastMain ? 'Dum + presente indica un’azione contemporanea: con la reggente al passato si traduce con l’imperfetto.' : 'Dum + indicativo: «mentre».');
+      return finish(ctx, [lit('dum', 'dum'), ...la1, ...joinLa(l2)], (ch, reg) => 'Mentre ' + joinIt(itClause(c1, ch, reg, { key: '1', itTense: pastMain ? 'impf' : 'pres' })) + ', ' + joinIt(itClause(c2, ch, reg, { key: '2' })), tags, pastMain ? 'Dum + presente indica un’azione contemporanea: con la reggente al passato si traduce con l’imperfetto.' : 'Dum + indicativo: «mentre».');
     }
     if (kind === 'postquam' || kind === 'ubi') {
-      const c1 = clausePlan(ctx, { lite: true, tense: 'perf', noAdv: true, noNeg: true }); if (!c1) return null;
-      const c2 = clausePlan(ctx, { lite: true, tense: 'perf', noAdv: true, ex: [c1.subj && c1.subj.N.head].filter(Boolean) }); if (!c2) return null;
+      const c1 = clausePlan(ctx, { lite: true, tense: 'perf', noAdv: true, noNeg: true, noQ: true }); if (!c1) return null;
+      const c2 = clausePlan(ctx, { lite: true, tense: 'perf', noAdv: true, noQ: true, ex: [c1.subj && c1.subj.N.head].filter(Boolean) }); if (!c2) return null;
       const l1 = laClause(c1), l2 = laClause(c2); if (!l1 || !l2) return null;
       const tags = new Set(['s_sub', 'v_perf']); planTags(c1, tags); planTags(c2, tags);
       const la1 = joinLa(l1); la1[la1.length - 1] += ',';
       const intro = kind === 'postquam' ? ['Dopo che'] : ['Quando', 'Appena'];
-      return finish(ctx, [kind, ...la1, ...joinLa(l2)], (ch, reg) => {
+      return finish(ctx, [lit(kind, kind), ...la1, ...joinLa(l2)], (ch, reg) => {
         let w = intro[0]; if (intro.length > 1) { reg('in', 2); w = intro[ch('in')] || intro[0]; }
         return w + ' ' + joinIt(itClause(c1, ch, reg, { key: '1' })) + ', ' + joinIt(itClause(c2, ch, reg, { key: '2' }));
       }, tags, kind === 'postquam' ? 'Dopo postquam il latino usa il perfetto anche dove l’italiano preferisce il trapassato.' : 'Ubi + perfetto: «quando, appena».');
     }
     // causale: reazione + causa
-    const tense = T.has('v_perf') && chance(0.3) ? 'perf' : 'pres';
+    const tense = T.has('v_perf') && (!ctx.tenses || ctx.tenses.includes('perf')) && chance(0.3) ? 'perf' : 'pres';
     let c1 = null, la1 = null, it1 = null;
     const t1 = new Set(['s_sub']);
-    const emo = ADJS.filter((A) => T.has(A.t) && ['laetus', 'tristis', 'miser', 'felix'].includes(A.head));
-    if (emo.length && chance(0.6)) {
+    const emo = lexFilter(ADJS.filter((A) => T.has(A.t) && ['laetus', 'tristis', 'miser', 'felix'].includes(A.head)), (A) => A.e, 0);
+    if (emo.length && known(SUM) && chance(0.6)) {
       const A = pick(emo);
-      const np = pickNP(ctx, 'H !col !gent', { subj: true, noCity: true }); if (!np) return null;
+      const np = pickNP(ctx, 'H !col !gent', { subj: true, noCity: true, filter: (N) => caseOK(N, 'nom') }); if (!np) return null;
       const p = np.num === 's' ? 2 : 5;
       const sx = laNP(np, 'nom'); const af = adjForm(A, 'nom', np.num, np.N.g); const sf = vform(SUM, { mood: 'ind', tense: 'pres', voice: 'act', p });
       if (!sx || !af || !sf) return null;
@@ -879,18 +1002,20 @@
       it1 = (ch, reg) => { const s = itNP(np, ch, reg); return itStr(s) + ' ' + IT.verb('essere', 'pres', { p, g: s.g, n: s.n }) + ' ' + IT.adjAgree(A.it[A.it.length > 1 ? 1 : 0].forms, s.g, s.n); };
       c1 = { subj: np };
     } else {
-      const plan = clausePlan(ctx, { lite: true, tense: 'pres', noAdv: true, noNeg: true, verbFilter: (v) => ['rideo', 'lacrimo', 'fugio', 'timeo', 'clamo', 'propero'].includes(v.la) });
+      const plan = clausePlan(ctx, { lite: true, tense: 'pres', noAdv: true, noNeg: true, noQ: true, verbFilter: (v) => ['rideo', 'lacrimo', 'fugio', 'timeo', 'clamo', 'propero'].includes(v.la) });
       if (!plan) return null;
       const l = laClause(plan); if (!l) return null;
       la1 = joinLa(l); planTags(plan, t1); c1 = plan;
       it1 = (ch, reg) => joinIt(itClause(plan, ch, reg, { key: '1' }));
     }
-    const c2 = clausePlan(ctx, { lite: true, tense, noAdv: true, ex: [c1.subj && c1.subj.N.head].filter(Boolean) }); if (!c2) return null;
+    const c2 = clausePlan(ctx, { lite: true, tense, noAdv: true, noQ: true, ex: [c1.subj && c1.subj.N.head].filter(Boolean) }); if (!c2) return null;
     const l2 = laClause(c2); if (!l2) return null;
     planTags(c2, t1);
     la1[la1.length - 1] += ',';
-    const conj = pick(['quod', 'quia']);
-    return finish(ctx, [...la1, conj, ...joinLa(l2)], (ch, reg) => {
+    const conjs = ['quod', 'quia'].filter(knownU);
+    if (!conjs.length) return null;
+    const conj = pick(conjs);
+    return finish(ctx, [...la1, lit(conj, conj), ...joinLa(l2)], (ch, reg) => {
       reg('cz', 2);
       return it1(ch, reg) + (ch('cz') ? ', poiché ' : ' perché ') + joinIt(itClause(c2, ch, reg, { key: '2', prefPP: true }));
     }, t1, 'Quod e quia + indicativo introducono una causale: «perché».');
@@ -898,15 +1023,15 @@
 
   function bRel(ctx) {
     const T = ctx.T;
-    if (!T.has('pron_rel')) return null;
-    const main = clausePlan(ctx, { lite: true, noPerson: true, noAdv: true });
+    if (!T.has('pron_rel') || !knownU('qui')) return null;
+    const main = clausePlan(ctx, { lite: true, noPerson: true, noAdv: true, noQ: true });
     if (!main || !main.subj || main.subj.N.proper) return null;
     const ant = main.subj;
     ant.gen = null; ant.dem = null;
     const role = chance(0.55) ? 'nom' : 'acc';
     const rel = role === 'nom'
-      ? clausePlan(ctx, { lite: true, subjNP: ant, noAdv: true, noPerson: true, ex: [ant.N.head] })
-      : clausePlan(ctx, { lite: true, objNP: ant, needObj: true, noAdv: true, noPerson: true, voice: 'act', ex: [ant.N.head], subjFilter: (N) => N.head !== ant.N.head });
+      ? clausePlan(ctx, { lite: true, subjNP: ant, noAdv: true, noPerson: true, noQ: true, ex: [ant.N.head] })
+      : clausePlan(ctx, { lite: true, objNP: ant, needObj: true, noAdv: true, noPerson: true, noQ: true, voice: 'act', ex: [ant.N.head], subjFilter: (N) => N.head !== ant.N.head });
     if (!rel) return null;
     const relF = pronForm(PRON.qui, role, ant.num, ant.N.g); if (!relF) return null;
     const lm = laClause(main); const lr = laClause(rel, { noSubj: role === 'nom', noObj: role === 'acc' });
@@ -925,16 +1050,16 @@
 
   function bCum(ctx) {
     const T = ctx.T;
-    if (!T.has('s_cum') || !T.has('v_cong') || !T.has('v_perf')) return null;
-    const ant = chance(0.5);
+    if (!T.has('s_cum') || !T.has('v_cong') || !T.has('v_perf') || !knownU('cum@s_cum')) return null;
+    const ant = ctx.tenses && !ctx.tenses.includes('ppf') ? false : chance(0.5);
     const voice = T.has('v_pass') && chance(0.25) ? 'pass' : 'act';
-    const c1 = clausePlan(ctx, { lite: true, tense: ant ? 'ppf' : 'impf', voice, noAdv: true, noNeg: true, noDatPron: true }); if (!c1) return null;
+    const c1 = clausePlan(ctx, { lite: true, tense: ant ? 'ppf' : 'impf', voice, noAdv: true, noNeg: true, noDatPron: true, noQ: true }); if (!c1) return null;
     c1.mood = 'cong';
-    const c2 = clausePlan(ctx, { lite: true, tense: 'perf', noAdv: true, ex: [c1.subj && c1.subj.N.head].filter(Boolean) }); if (!c2) return null;
+    const c2 = clausePlan(ctx, { lite: true, tense: 'perf', noAdv: true, noQ: true, ex: [c1.subj && c1.subj.N.head].filter(Boolean) }); if (!c2) return null;
     const l1 = laClause(c1), l2 = laClause(c2); if (!l1 || !l2) return null;
     const tags = new Set(['s_cum', 'v_cong', 'v_perf']); planTags(c1, tags); planTags(c2, tags);
     const la1 = joinLa(l1); la1[la1.length - 1] += ',';
-    return finish(ctx, ['cum', ...la1, ...joinLa(l2)], (ch, reg) => {
+    return finish(ctx, [lit('cum', 'cum@s_cum'), ...la1, ...joinLa(l2)], (ch, reg) => {
       const intro = ant ? ['Dopo che', 'Poiché'] : ['Mentre', 'Poiché'];
       reg('ci', 2);
       return intro[ch('ci')] + ' ' + joinIt(itClause(c1, ch, reg, { key: '1', itTense: ant ? 'tp' : 'impf' })) + ', ' + joinIt(itClause(c2, ch, reg, { key: '2' }));
@@ -946,8 +1071,8 @@
     if (!T.has('v_cong')) return null;
     const r = rand();
     // finale con lo stesso soggetto: «per» + infinito
-    if (r < 0.6) {
-      const c1 = clausePlan(ctx, { lite: true, noAdv: true, noNeg: true, noPerson: true, verbFilter: (v) => v.pp && v.pp.to, forcePP: true });
+    if (r < 0.6 && knownU('ut')) {
+      const c1 = clausePlan(ctx, { lite: true, noAdv: true, noNeg: true, noPerson: true, noQ: true, verbFilter: (v) => v.pp && v.pp.to, forcePP: true });
       if (!c1 || !c1.subj) return null;
       const to = c1.pps.find((pp) => pp.kind === 'to' && pp.np);
       let vf = null, objSpec = null;
@@ -956,28 +1081,29 @@
         if (opts.length) { const x = pick(opts); vf = (v) => v === x.v; objSpec = x.ospec || null; }
       }
       const past = c1.tense === 'impf' || c1.tense === 'perf';
-      const c2 = clausePlan(ctx, { lite: true, subjNP: c1.subj, fixedSubj: true, objSpec, tense: past ? 'impf' : 'pres', mood: 'cong', noAdv: true, noNeg: true, noPP: true, noDatPron: true, verbFilter: vf || ((v) => v !== c1.verb), ex: [c1.subj.N.head].filter(Boolean) });
+      const c2 = clausePlan(ctx, { lite: true, subjNP: c1.subj, fixedSubj: true, objSpec, tense: past ? 'impf' : 'pres', mood: 'cong', noAdv: true, noNeg: true, noPP: true, noDatPron: true, noQ: true, verbFilter: vf || ((v) => v !== c1.verb), ex: [c1.subj.N.head].filter(Boolean) });
       if (!c2) return null;
       c2.mood = 'cong';
       const l1 = laClause(c1), l2 = laClause(c2, { noSubj: true }); if (!l1 || !l2) return null;
       const tags = new Set(['v_cong']); planTags(c1, tags); planTags(c2, tags);
-      return finish(ctx, [...joinLa(l1), 'ut', ...l2.rest], (ch, reg) => joinIt(itClause(c1, ch, reg, { key: '1' })) + ' per ' + itClause(c2, ch, reg, { key: '2', itVerb: (itv) => itInfinitive(itv) }).rest, tags, 'Ut + congiuntivo: proposizione finale, «per» + infinito quando il soggetto è lo stesso.');
+      return finish(ctx, [...joinLa(l1), lit('ut', 'ut'), ...l2.rest], (ch, reg) => joinIt(itClause(c1, ch, reg, { key: '1' })) + ' per ' + itClause(c2, ch, reg, { key: '2', itVerb: (itv) => itInfinitive(itv) }).rest, tags, 'Ut + congiuntivo: proposizione finale, «per» + infinito quando il soggetto è lo stesso.');
     }
     // finale negativa con soggetto diverso: «perché… non» + congiuntivo
-    const guard = VERBS.filter((v) => ['custodio', 'defendo'].includes(v.la) && T.has(v.e.t));
+    if (!knownU('ne')) return null;
+    const guard = VERBS.filter((v) => ['custodio', 'defendo'].includes(v.la) && T.has(v.e.t) && known(v.e));
     if (!guard.length) return null;
-    const c1 = clausePlan(ctx, { lite: true, noAdv: true, noNeg: true, noPerson: true, verbFilter: (v) => guard.includes(v), voice: 'act' });
+    const c1 = clausePlan(ctx, { lite: true, noAdv: true, noNeg: true, noPerson: true, noQ: true, verbFilter: (v) => guard.includes(v), voice: 'act' });
     if (!c1 || !c1.obj || !c1.obj.N.tags.has('P') && !c1.obj.N.tags.has('bld')) return null;
     const threat = VERBS.filter((v) => ['capio', 'occupo', 'deleo', 'oppugno', 'expugno'].includes(v.la) && T.has(v.e.t) && v.o && matches(c1.obj.N, v.o));
     if (!threat.length) return null;
     const past = c1.tense === 'impf' || c1.tense === 'perf';
     const objCopy = { ...c1.obj, id: npSeq++, adj: null, dem: null, poss: null, gen: null };
-    const c2 = clausePlan(ctx, { lite: true, objNP: objCopy, tense: past ? 'impf' : 'pres', noAdv: true, noNeg: true, noPP: true, noPerson: true, verbFilter: (v) => threat.includes(v), subjFilter: (N) => N.tags.has('foe') || N.head === 'hostis', ex: [c1.subj && c1.subj.N.head].filter(Boolean) });
+    const c2 = clausePlan(ctx, { lite: true, objNP: objCopy, tense: past ? 'impf' : 'pres', noAdv: true, noNeg: true, noPP: true, noPerson: true, noQ: true, verbFilter: (v) => threat.includes(v), subjFilter: (N) => N.tags.has('foe') || N.head === 'hostis', ex: [c1.subj && c1.subj.N.head].filter(Boolean) });
     if (!c2) return null;
     c2.mood = 'cong';
     const l1 = laClause(c1), l2 = laClause(c2); if (!l1 || !l2) return null;
     const tags = new Set(['v_cong']); planTags(c1, tags); planTags(c2, tags);
-    return finish(ctx, [...joinLa(l1), 'ne', ...joinLa(l2)], (ch, reg) => {
+    return finish(ctx, [...joinLa(l1), lit('ne', 'ne'), ...joinLa(l2)], (ch, reg) => {
       reg('ne', 2);
       const c = itClause(c2, ch, reg, { key: '2', noNeg: true, itTense: past ? 'cimpf' : 'cpres' });
       return joinIt(itClause(c1, ch, reg, { key: '1' })) + (ch('ne') ? ' affinché ' : ' perché ') + c.subj + ' non ' + c.rest;
@@ -987,17 +1113,19 @@
   function bInf(ctx) {
     const T = ctx.T;
     if (!T.has('v_inf')) return null;
-    const sayers = SAYERS.filter((s) => T.has(s.e.t) && (!s.fut || T.has('v_part')));
+    const sayers = lexFilter(SAYERS.filter((s) => T.has(s.e.t) && (!s.fut || T.has('v_part'))), (s) => s.e, 0.15);
     if (!sayers.length) return null;
     const S = pick(sayers);
-    const mainTense = T.has('v_perf') && chance(0.45) ? 'perf' : 'pres';
+    mark(S.e);
+    const mainTense = T.has('v_perf') && (!ctx.tenses || ctx.tenses.includes('perf')) && chance(0.45) ? 'perf' : 'pres';
     const rels = ['cont'];
     if (T.has('v_perf')) rels.push('ant');
     if (T.has('v_part')) rels.push('post');
-    let rel = S.fut ? 'post' : pick(rels);
-    const subj = pickNP(ctx, S.s, { subj: true, noCity: true }); if (!subj) return null;
+    const allowedRel = ctx.infRel ? rels.filter((r) => ctx.infRel.includes(r)) : rels;
+    let rel = S.fut ? 'post' : pick(allowedRel.length ? allowedRel : rels);
+    const subj = pickNP(ctx, S.s, { subj: true, noCity: true, filter: (N) => caseOK(N, 'nom') }); if (!subj) return null;
     const voice = rel !== 'post' && T.has('v_pass') && chance(0.25) ? 'pass' : 'act';
-    const inner = clausePlan(ctx, { lite: true, noAdv: true, noNeg: true, noPerson: true, voice, noDatPron: true, ex: [subj.N.head], tense: 'pres' });
+    const inner = clausePlan(ctx, { lite: true, noAdv: true, noNeg: true, noPerson: true, voice, noDatPron: true, noQ: true, ex: [subj.N.head], tense: 'pres' });
     if (!inner || !inner.subj) return null;
     const ig = inner.subj.N.g, inum = inner.subj.num;
     const inf = laInfinitive(inner.verb.e, rel, voice, ig, inum); if (!inf) return null;
@@ -1028,11 +1156,12 @@
     const mainTense = T.has('v_perf') ? 'perf' : 'pres';
     if (r < 0.65) {
       // participio perfetto: «presa la città, …»
-      const vs = VERBS.filter((v) => v.ab && v.pass && T.has(v.e.t));
+      const vs = lexFilter(VERBS.filter((v) => v.ab && v.pass && T.has(v.e.t)), (v) => v.e, 0.15);
       if (!vs.length) return null;
       const V = pick(vs);
-      const obj = pickNP(ctx, V.o, { noCity: !/\bC\b/.test(V.o) }); if (!obj) return null;
-      const main = clausePlan(ctx, { lite: true, tense: mainTense, noAdv: true, noPerson: true, verbFilter: (v) => v.la !== V.la, subjFilter: (N) => matches(N, V.ab), ex: [obj.N.head] });
+      mark(V.e);
+      const obj = pickNP(ctx, V.o, { noCity: !/\bC\b/.test(V.o), filter: (N) => caseOK(N, 'abl') }); if (!obj) return null;
+      const main = clausePlan(ctx, { lite: true, tense: mainTense, noAdv: true, noPerson: true, noQ: true, verbFilter: (v) => v.la !== V.la, subjFilter: (N) => matches(N, V.ab), ex: [obj.N.head] });
       if (!main) return null;
       const part = vform(V.e, { mood: 'part', tense: 'perf', c: 'abl', n: obj.num, g: obj.N.g }); if (!part) return null;
       const ox = laNP(obj, 'abl'); if (!ox) return null;
@@ -1052,8 +1181,8 @@
     if (r < 0.85) {
       // nominale: «Caesare duce»
       const lead = pickNP(ctx, 'mil rul', { filter: (N) => N.tags.has('N') && N.tags.has('H') }); if (!lead) return null;
-      const title = byHead.dux; if (!title || !nounOK(ctx, title)) return null;
-      const main = clausePlan(ctx, { lite: true, tense: mainTense, noAdv: true, noPerson: true, needObj: true, verbFilter: (v) => ['vinco', 'supero', 'expugno', 'capio', 'occupo', 'oppugno', 'defendo'].includes(v.la), subjFilter: (N) => N.tags.has('gent') || N.head === 'miles' || N.head === 'exercitus', ex: [lead.N.head] });
+      const title = byHead.dux; if (!title || !nounOK(ctx, title) || !known(title.e)) return null;
+      const main = clausePlan(ctx, { lite: true, tense: mainTense, noAdv: true, noPerson: true, needObj: true, noQ: true, verbFilter: (v) => ['vinco', 'supero', 'expugno', 'capio', 'occupo', 'oppugno', 'defendo'].includes(v.la), subjFilter: (N) => N.tags.has('gent') || N.head === 'miles' || N.head === 'exercitus', ex: [lead.N.head] });
       if (!main) return null;
       const lx = nounForm(lead.N, 'abl', 's'), tx = nounForm(title, 'abl', 's');
       const lm = laClause(main); if (!lm || !lx || !tx) return null;
@@ -1065,11 +1194,11 @@
       }, tags, 'Ablativo assoluto nominale: due nomi in ablativo, senza participio.');
     }
     // participio presente: «hostibus appropinquantibus»
-    const vs = VERBS.filter((v) => ['appropinquo', 'venio'].includes(v.la) && T.has(v.e.t));
+    const vs = VERBS.filter((v) => ['appropinquo', 'venio'].includes(v.la) && T.has(v.e.t) && known(v.e));
     if (!vs.length) return null;
     const V = pick(vs);
-    const s = pickNP(ctx, 'foe wild', { subj: true, noCity: true, filter: (N) => matches(N, V.s) }); if (!s) return null;
-    const main = clausePlan(ctx, { lite: true, tense: mainTense, noAdv: true, noPerson: true, verbFilter: (v) => ['fugio', 'timeo', 'propero', 'defendo', 'clamo', 'custodio'].includes(v.la), subjFilter: (N) => !N.tags.has('foe') && !N.tags.has('wild'), ex: [s.N.head] });
+    const s = pickNP(ctx, 'foe wild', { subj: true, noCity: true, filter: (N) => matches(N, V.s) && caseOK(N, 'abl') }); if (!s) return null;
+    const main = clausePlan(ctx, { lite: true, tense: mainTense, noAdv: true, noPerson: true, noQ: true, verbFilter: (v) => ['fugio', 'timeo', 'propero', 'defendo', 'clamo', 'custodio'].includes(v.la), subjFilter: (N) => !N.tags.has('foe') && !N.tags.has('wild'), ex: [s.N.head] });
     if (!main) return null;
     const part = vform(V.e, { mood: 'part', tense: 'pres', c: 'abl', n: s.num, g: s.N.g }); if (!part) return null;
     const sx = laNP(s, 'abl'); const lm = laClause(main); if (!sx || !lm) return null;
@@ -1085,15 +1214,15 @@
 
   /* ---------- Scelta del costrutto ---------- */
   const BY_FOCUS = {
-    v_pres: [[bBasic, { tense: 'pres' }]],
-    n1: [[bBasic, { topic: 'n1' }], [bCopula, { topic: 'n1', kind: 'adj' }]],
+    v_pres: [[bBasic, { tense: 'pres' }], [bCoord, {}], [bBasic, { tense: 'pres', q: true }]],
+    n1: [[bBasic, { topic: 'n1' }], [bCopula, { topic: 'n1', kind: 'adj' }], [bCoord, {}]],
     n2: [[bBasic, { topic: 'n2' }], [bCopula, { topic: 'n2', kind: 'adj' }]],
     n3: [[bBasic, { topic: 'n3' }], [bCopula, { topic: 'n3', kind: 'adj' }]],
     n45: [[bBasic, { topic: 'n45' }]],
     compl: [[bBasic, { forcePP: true }], [bCopula, { kind: 'exist' }], [bCopula, { kind: 'loc' }]],
     agg1: [[bBasic, { forceAdj: 'agg1' }], [bCopula, { kind: 'adj', forceAdj: 'agg1' }]],
     agg2: [[bBasic, { forceAdj: 'agg2' }], [bCopula, { kind: 'adj', forceAdj: 'agg2' }]],
-    v_if: [[bBasic, {}]],
+    v_if: [[bBasic, {}], [bCoord, {}]],
     v_poss: [[bModal, { modal: 'v_poss' }], [bSumComp, {}]],
     v_imper: [[bImper, {}]],
     pron_pers: [[bBasic, { forcePoss: true }], [bBasic, { person: true }]],
@@ -1110,34 +1239,40 @@
     v_cong: [[bUt, {}]],
     s_cum: [[bCum, {}]],
   };
+  // o: { avoid, lex (Set di uid), maxNew, newOK(e), formOK(e, key), tenses, nums(N), infRel, lite, tries }
   function generate(selected, focus, o = {}) {
     const T = new Set(selected);
     if (!T.has('v_pres')) return null;
     const topics = [...T];
     const avoid = new Set(o.avoid || []);
-    for (let attempt = 0; attempt < 60; attempt++) {
-      const f = focus && T.has(focus) && attempt < 40 ? focus : pick(topics);
-      const ctx = { T, focus: f };
+    const tries = o.tries || 60;
+    for (let attempt = 0; attempt < tries; attempt++) {
+      const f = focus && T.has(focus) && attempt < tries * 0.7 ? focus : pick(topics);
+      const ctx = { T, focus: f, lex: o.lex || null, maxNew: o.maxNew || 0, newOK: o.newOK || null, formOK: o.formOK || null, tenses: o.tenses || null, nums: o.nums || null, infRel: o.infRel || null };
+      CTX = ctx; TR = []; NEWS.clear();
       const list = BY_FOCUS[f] || [[bBasic, {}]];
       const [fn, opt] = pick(list);
       const op = { ...opt };
+      if (o.lite) op.lite = true;
       if (op.person === true) op.person = pick([0, 1, 3, 4]);
       if (op.tense && op.tense === 'perf' && !T.has('v_perf')) delete op.tense;
       if (op.voice === 'pass' && !T.has('v_pass')) delete op.voice;
       let s = null;
-      try { s = fn(ctx, op); } catch (e) { s = null; }
+      try { s = fn(ctx, op); } catch (e) { if (o.debug) throw e; s = null; }
       if (!s || avoid.has(s.la)) continue;
       s.focus = f;
       s.id = 'g' + hash(s.la);
       s.src = 'gen';
+      CTX = { T: new Set() };
       return s;
     }
+    CTX = { T: new Set() };
     return null;
   }
   function hash(str) { let h = 0; for (const c of str) h = (h * 31 + c.charCodeAt(0)) | 0; return Math.abs(h).toString(36); }
 
   // generatore pseudo-casuale sostituibile (per i test riproducibili)
   function seed(fn) { rand = fn || Math.random; }
-  root.VertoGen = { seed, generate, NOUNS, ADJS, VERBS, _internal: { bBasic, bCopula, bComp, bImper, bModal, bSumComp, bSub, bRel, bCum, bUt, bInf, bAbl } };
+  root.VertoGen = { seed, generate, NOUNS, ADJS, VERBS, MODALS, SUMCOMP, SAYERS, ADV, _internal: { bBasic, bCoord, bCopula, bComp, bImper, bModal, bSumComp, bSub, bRel, bCum, bUt, bInf, bAbl } };
   if (typeof module !== 'undefined') module.exports = root.VertoGen;
 })(typeof window !== 'undefined' ? window : globalThis);
