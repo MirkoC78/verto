@@ -1,0 +1,447 @@
+/* VERTO — programma del biennio e schede di teoria.
+   Blocchi: {p: html} paragrafo · {t: {c: intestazioni, r: righe}, cap} tabella · {ul: [..]} elenco */
+(function (root) {
+const C = ['Nom.', 'Gen.', 'Dat.', 'Acc.', 'Voc.', 'Abl.'];
+const tab = (cols, rows) => ({ c: cols, r: rows });
+const decl = (sing, plur, h1 = 'Singolare', h2 = 'Plurale') => tab(['Caso', h1, h2], C.map((c, i) => [c, sing[i], plur[i]]));
+const P6 = ['1ª sing.', '2ª sing.', '3ª sing.', '1ª plur.', '2ª plur.', '3ª plur.'];
+const conj = (heads, cols) => tab(['Persona', ...heads], P6.map((p, i) => [p, ...cols.map((c) => c[i])]));
+
+const GROUPS = {
+  nom: { name: 'Morfologia del nome', color: 'g-nom' },
+  ver: { name: 'Morfologia del verbo', color: 'g-ver' },
+  pro: { name: 'Pronomi', color: 'g-pro' },
+  sin: { name: 'Sintassi', color: 'g-sin' },
+};
+
+const TOPICS = [
+{
+  id: 'v_pres', short: 'Presente', title: 'Indicativo presente e verbo sum', group: 'ver',
+  desc: 'indicativo presente attivo delle quattro coniugazioni e della mista; indicativo presente di sum; infinito presente attivo',
+  body: [
+    { p: 'Ogni verbo si studia dal <b>paradigma</b>: <span class="la">amo, amas, amavi, amatum, amare</span>. La coniugazione si riconosce dall’<b>infinito</b>: <span class="la">-āre</span> (1ª), <span class="la">-ēre</span> (2ª), <span class="la">-ĕre</span> (3ª), <span class="la">-īre</span> (4ª). I verbi in <span class="la">-io</span> con infinito in <span class="la">-ĕre</span> (<span class="la">capio, capere</span>) formano la coniugazione <b>mista</b>.' },
+    { t: conj(['1ª amo', '2ª moneo', '3ª lego', 'mista capio', '4ª audio', 'sum'], [
+      ['amo', 'amas', 'amat', 'amamus', 'amatis', 'amant'],
+      ['moneo', 'mones', 'monet', 'monemus', 'monetis', 'monent'],
+      ['lego', 'legis', 'legit', 'legimus', 'legitis', 'legunt'],
+      ['capio', 'capis', 'capit', 'capimus', 'capitis', 'capiunt'],
+      ['audio', 'audis', 'audit', 'audimus', 'auditis', 'audiunt'],
+      ['sum', 'es', 'est', 'sumus', 'estis', 'sunt']]), cap: 'Desinenze personali attive: -o/-m, -s, -t, -mus, -tis, -nt' },
+    { p: 'Il <b>soggetto</b> è spesso sottinteso: è la desinenza a dire chi compie l’azione. <span class="la">Laudamus</span> = «(noi) lodiamo».' },
+  ],
+  tip: 'Il verbo sta di solito alla fine della frase: cercalo per primo e guarda la desinenza per capire la persona.',
+  trap: ['3ª plurale: <span class="la">-unt</span> nella 3ª coniugazione, <span class="la">-iunt</span> nella 4ª e nella mista.', '<span class="la">legit</span> (presente, «legge») e <span class="la">legis</span> («leggi») differiscono per una lettera: leggi tutta la desinenza.'],
+  ex: [['Legunt et scribunt.', 'Leggono e scrivono.'], ['Cur times?', 'Perché temi?']],
+},
+{
+  id: 'n1', short: 'I decl.', title: 'Prima declinazione', group: 'nom',
+  desc: 'nomi della prima declinazione in -a, -ae (femminili e maschili come agricola, nauta, poeta)',
+  body: [
+    { p: 'Il latino indica la <b>funzione logica</b> della parola con la desinenza: il <b>caso</b>. La 1ª declinazione comprende nomi in <span class="la">-a</span> con genitivo in <span class="la">-ae</span>, quasi tutti femminili.' },
+    { t: decl(['ros-a', 'ros-ae', 'ros-ae', 'ros-am', 'ros-a', 'ros-ā'], ['ros-ae', 'ros-arum', 'ros-is', 'ros-as', 'ros-ae', 'ros-is']), cap: 'rosa, rosae, f. — la rosa' },
+    { ul: ['<b>Nominativo</b>: soggetto e parte nominale.', '<b>Genitivo</b>: specificazione («di»).', '<b>Dativo</b>: termine («a, per»).', '<b>Accusativo</b>: complemento oggetto.', '<b>Vocativo</b>: chi viene chiamato.', '<b>Ablativo</b>: molti complementi (mezzo, modo, luogo…).'] },
+    { p: 'Sono <b>maschili</b> i nomi di uomini e mestieri maschili: <span class="la">agricola, nauta, poeta, incola</span>. <span class="la">Dea</span> e <span class="la">filia</span> hanno il dativo e l’ablativo plurale in <span class="la">-abus</span>.' },
+  ],
+  tip: 'Se il verbo è al plurale, un nome in -ae è probabilmente il soggetto (nominativo plurale).',
+  trap: ['<span class="la">-ae</span> può essere genitivo singolare, dativo singolare o nominativo plurale.', '<span class="la">-is</span> è sia dativo sia ablativo plurale: decide il senso della frase.'],
+  ex: [['Puella rosas amat.', 'La fanciulla ama le rose.'], ['Poeta reginae rosas dat.', 'Il poeta dà rose alla regina.']],
+},
+{
+  id: 'compl', short: 'Compl.', title: 'Complementi di luogo, mezzo, modo, compagnia, causa e tempo', group: 'sin',
+  desc: 'complementi di stato in luogo, moto a luogo, moto da luogo, moto per luogo, mezzo, modo, compagnia, causa, tempo determinato e continuato; locativo e nomi di città',
+  body: [
+    { t: tab(['Complemento', 'Costruzione', 'Esempio'], [
+      ['Stato in luogo', 'in + abl.', '<span class="la">in silvā</span> — nel bosco'],
+      ['Moto a luogo', 'in / ad + acc.', '<span class="la">in silvam</span> — nel bosco (verso)'],
+      ['Moto da luogo', 'a/ab, e/ex, de + abl.', '<span class="la">e Graeciā</span> — dalla Grecia'],
+      ['Moto per luogo', 'per + acc.', '<span class="la">per insulas</span> — attraverso le isole'],
+      ['Mezzo (cosa)', 'abl. semplice', '<span class="la">sagittis</span> — con le frecce'],
+      ['Modo', 'cum + abl.; agg. + (cum) + abl.', '<span class="la">magnā cum laetitiā</span> — con grande gioia'],
+      ['Compagnia', 'cum + abl.', '<span class="la">cum amicis</span> — con gli amici'],
+      ['Causa', 'abl. semplice; propter / ob + acc.', '<span class="la">propter pugnam</span> — a causa della battaglia'],
+      ['Tempo determinato', 'abl. semplice', '<span class="la">hieme</span> — d’inverno'],
+      ['Tempo continuato', 'acc. semplice (o per + acc.)', '<span class="la">multos annos</span> — per molti anni']]) },
+    { p: 'Con i <b>nomi di città</b> e piccole isole non si usa la preposizione: <span class="la">Romam</span> (a Roma, moto), <span class="la">Romā</span> (da Roma), <span class="la">Romae</span> (a Roma, stato: <b>locativo</b>). Lo stesso vale per <span class="la">domus</span>: <span class="la">domum, domo, domi</span>.' },
+  ],
+  tip: 'Guarda il caso dopo la preposizione: in + accusativo è movimento, in + ablativo è stato.',
+  trap: ['<span class="la">cum</span> + ablativo di persona è compagnia; + nome astratto è modo.', 'Un ablativo senza preposizione può essere mezzo, causa o tempo: decide il significato della parola.'],
+  ex: [['Puellae in silva ambulant.', 'Le fanciulle passeggiano nel bosco.'], ['Puellae Romae habitant.', 'Le fanciulle abitano a Roma.']],
+},
+{
+  id: 'n2', short: 'II decl.', title: 'Seconda declinazione', group: 'nom',
+  desc: 'nomi della seconda declinazione maschili in -us, -er, -ir e neutri in -um; vocativo in -e e in -i',
+  body: [
+    { t: tab(['Caso', 'dominus (m.)', 'puer (m.)', 'templum (n.)'], C.map((c, i) => [c, ['domin-us', 'domin-i', 'domin-o', 'domin-um', 'domin-e', 'domin-o'][i], ['puer', 'puer-i', 'puer-o', 'puer-um', 'puer', 'puer-o'][i], ['templ-um', 'templ-i', 'templ-o', 'templ-um', 'templ-um', 'templ-o'][i]])), cap: 'Singolare' },
+    { t: tab(['Caso', 'dominus', 'puer', 'templum'], C.map((c, i) => [c, ['domin-i', 'domin-orum', 'domin-is', 'domin-os', 'domin-i', 'domin-is'][i], ['puer-i', 'puer-orum', 'puer-is', 'puer-os', 'puer-i', 'puer-is'][i], ['templ-a', 'templ-orum', 'templ-is', 'templ-a', 'templ-a', 'templ-is'][i]])), cap: 'Plurale' },
+    { p: '<b>Regola dei neutri</b> (vale per tutte le declinazioni): nominativo, accusativo e vocativo sono uguali; al plurale escono in <span class="la">-a</span>. Alcuni nomi in <span class="la">-er</span> perdono la <i>e</i>: <span class="la">ager, agri</span>; <span class="la">magister, magistri</span>. Il tema si ricava sempre dal genitivo.' },
+    { p: 'Il vocativo dei nomi in <span class="la">-us</span> esce in <span class="la">-e</span> (<span class="la">domine</span>), quello dei nomi in <span class="la">-ius</span> in <span class="la">-i</span> (<span class="la">fili</span>). <span class="la">Deus</span> ha forme particolari: <span class="la">di, dis</span>.' },
+  ],
+  tip: 'Un neutro plurale in -a non è un femminile della prima declinazione: controlla il lemma sul dizionario.',
+  trap: ['<span class="la">-i</span> può essere genitivo singolare o nominativo plurale.', '<span class="la">-o</span> è dativo o ablativo singolare.'],
+  ex: [['Domini servos vocant.', 'I padroni chiamano i servi.'], ['Templa deorum in foro sunt.', 'I templi degli dèi sono nel foro.']],
+},
+{
+  id: 'agg1', short: 'Agg. I cl.', title: 'Aggettivi della prima classe', group: 'nom',
+  desc: 'aggettivi della prima classe in -us, -a, -um e in -er; concordanza; aggettivi pronominali (totus, solus, nullus, unus, alius)',
+  body: [
+    { p: 'Gli aggettivi della 1ª classe si declinano come la 2ª declinazione al maschile e al neutro, come la 1ª al femminile: <span class="la">bonus, bona, bonum</span>; <span class="la">pulcher, pulchra, pulchrum</span>; <span class="la">liber, libera, liberum</span>.' },
+    { p: 'L’aggettivo <b>concorda</b> con il nome in genere, numero e caso, ma non sempre ha la stessa desinenza: <span class="la">agricola bonus</span>, <span class="la">nautae boni</span>.' },
+    { ul: ['<b>Attributo</b>: <span class="la">puella pulchra cantat</span> — la bella fanciulla canta.', '<b>Predicato</b> (con sum): <span class="la">puella pulchra est</span> — la fanciulla è bella.', '<b>Sostantivato</b>: <span class="la">boni</span> = i buoni; <span class="la">multa</span> = molte cose.'] },
+    { p: 'Gli <b>aggettivi pronominali</b> (<span class="la">unus, solus, totus, nullus, ullus, alius, alter</span>) hanno il genitivo singolare in <span class="la">-ius</span> e il dativo in <span class="la">-i</span>: <span class="la">totius, toti</span>.' },
+  ],
+  tip: 'Per ogni aggettivo cerca il nome con cui concorda: è la prima cosa da «agganciare» quando costruisci la frase.',
+  trap: ['<span class="la">clarorum poetarum</span>: desinenze diverse, ma stesso caso e numero.', 'Un aggettivo neutro plurale sostantivato si traduce con «cose»: <span class="la">multa</span> = molte cose.'],
+  ex: [['Magna silva umbram gratam praebet.', 'La grande selva offre un’ombra gradita.']],
+},
+{
+  id: 'v_if', short: 'Impf. fut.', title: 'Indicativo imperfetto e futuro semplice', group: 'ver',
+  desc: 'indicativo imperfetto e futuro semplice attivo di tutte le coniugazioni e di sum',
+  body: [
+    { t: conj(['amo', 'moneo', 'lego', 'capio / audio', 'sum'], [
+      ['amabam', 'amabas', 'amabat', 'amabamus', 'amabatis', 'amabant'],
+      ['monebam', 'monebas', 'monebat', 'monebamus', 'monebatis', 'monebant'],
+      ['legebam', 'legebas', 'legebat', 'legebamus', 'legebatis', 'legebant'],
+      ['audiebam', 'audiebas', 'audiebat', 'audiebamus', 'audiebatis', 'audiebant'],
+      ['eram', 'eras', 'erat', 'eramus', 'eratis', 'erant']]), cap: 'Imperfetto: suffisso -ba-' },
+    { t: conj(['amo', 'moneo', 'lego', 'capio / audio', 'sum'], [
+      ['amabo', 'amabis', 'amabit', 'amabimus', 'amabitis', 'amabunt'],
+      ['monebo', 'monebis', 'monebit', 'monebimus', 'monebitis', 'monebunt'],
+      ['legam', 'leges', 'leget', 'legemus', 'legetis', 'legent'],
+      ['audiam', 'audies', 'audiet', 'audiemus', 'audietis', 'audient'],
+      ['ero', 'eris', 'erit', 'erimus', 'eritis', 'erunt']]), cap: 'Futuro: -bo/-bi/-bu (1ª e 2ª), -am/-e- (3ª, mista, 4ª)' },
+  ],
+  tip: 'Nella 3ª e 4ª coniugazione la vocale e segnala il futuro: leget = leggerà, legit = legge.',
+  trap: ['<span class="la">legam</span> è futuro (1ª sing.) ma, più avanti, anche congiuntivo presente.', '<span class="la">monebit</span> (futuro) e <span class="la">monebat</span> (imperfetto) si somigliano: controlla la vocale dopo -b-.'],
+  ex: [['Olim nautae in insula habitabant.', 'Un tempo i marinai abitavano sull’isola.'], ['Mox amicos videbimus.', 'Presto vedremo gli amici.']],
+},
+{
+  id: 'v_poss', short: 'Possum', title: 'Possum e i composti di sum', group: 'ver',
+  desc: 'possum e i composti di sum (absum, adsum, desum, praesum, intersum, prosum) con il dativo',
+  body: [
+    { p: '<span class="la">Possum</span> è formato da <span class="la">pot-</span> + <span class="la">sum</span>: davanti a <i>s</i> diventa <span class="la">pos-</span>. Regge l’<b>infinito</b> come i verbi servili italiani.' },
+    { t: conj(['presente', 'imperfetto', 'futuro'], [
+      ['possum', 'potes', 'potest', 'possumus', 'potestis', 'possunt'],
+      ['poteram', 'poteras', 'poterat', 'poteramus', 'poteratis', 'poterant'],
+      ['potero', 'poteris', 'poterit', 'poterimus', 'poteritis', 'poterunt']]), cap: 'possum, potui, posse' },
+    { t: tab(['Composto', 'Significato', 'Costruzione'], [
+      ['absum, afui, abesse', 'essere lontano, assente', 'a/ab + abl.'],
+      ['adsum, adfui, adesse', 'essere presente, assistere', 'dativo'],
+      ['desum, defui, deesse', 'mancare', 'dativo'],
+      ['praesum, praefui, praeesse', 'essere a capo di', 'dativo'],
+      ['intersum, interfui, interesse', 'partecipare a', 'dativo'],
+      ['prosum, profui, prodesse', 'giovare', 'dativo; prod- davanti a vocale']]) },
+  ],
+  tip: 'Nautis pecunia deest: «il denaro manca ai marinai» — il dativo indica a chi manca qualcosa.',
+  trap: ['<span class="la">potest</span> (può) non è un nome: è la 3ª persona di possum.', '<span class="la">prodest</span>: la <i>d</i> compare solo davanti a vocale.'],
+  ex: [['Nautae sine aqua vivere non possunt.', 'I marinai non possono vivere senza acqua.'], ['Legatus copiis praeerat.', 'Il legato comandava le truppe.']],
+},
+{
+  id: 'v_imper', short: 'Imperat.', title: 'Imperativo presente', group: 'ver',
+  desc: 'imperativo presente attivo (2ª persona singolare e plurale), forme tronche dic, duc, fac, fer; imperativo di sum',
+  body: [
+    { t: tab(['', 'amo', 'moneo', 'lego', 'capio', 'audio', 'sum'], [
+      ['2ª sing.', 'ama', 'mone', 'lege', 'cape', 'audi', 'es'],
+      ['2ª plur.', 'amate', 'monete', 'legite', 'capite', 'audite', 'este']]) },
+    { p: 'Hanno l’imperativo <b>tronco</b> al singolare: <span class="la">dic</span> (dico), <span class="la">duc</span> (duco), <span class="la">fac</span> (facio), <span class="la">fer</span> (fero). L’imperativo è spesso accompagnato da un <b>vocativo</b>.' },
+    { p: 'L’imperativo negativo si esprime con <span class="la">noli / nolite</span> + infinito: <span class="la">noli timere</span> = non temere.' },
+  ],
+  tip: 'Una parola che finisce come il tema puro del verbo, accanto a un vocativo, è quasi sempre un imperativo.',
+  trap: ['<span class="la">porta</span> può essere il nome «porta» o l’imperativo «porta!».', '<span class="la">lege</span> (leggi!) non va confusa con l’ablativo di lex.'],
+  ex: [['Pueri, magistrum audite!', 'Fanciulli, ascoltate il maestro!']],
+},
+{
+  id: 'pron_pers', short: 'Pron. pers.', title: 'Pronomi personali, riflessivi e possessivi', group: 'pro',
+  desc: 'pronomi personali ego, tu, nos, vos; riflessivo sui, sibi, se; possessivi meus, tuus, suus, noster, vester; mecum, tecum',
+  body: [
+    { t: tab(['Caso', 'ego', 'tu', 'nos', 'vos', 'riflessivo'], [
+      ['Nom.', 'ego', 'tu', 'nos', 'vos', '—'],
+      ['Gen.', 'mei', 'tui', 'nostri / nostrum', 'vestri / vestrum', 'sui'],
+      ['Dat.', 'mihi', 'tibi', 'nobis', 'vobis', 'sibi'],
+      ['Acc.', 'me', 'te', 'nos', 'vos', 'se'],
+      ['Abl.', 'me', 'te', 'nobis', 'vobis', 'se']]) },
+    { p: 'Il pronome soggetto si esprime solo per <b>enfasi</b> o contrasto. Con <span class="la">cum</span> la preposizione si mette dopo: <span class="la">mecum, tecum, secum, nobiscum, vobiscum</span>.' },
+    { p: 'Il riflessivo <span class="la">se</span> e il possessivo <span class="la">suus</span> si riferiscono al <b>soggetto</b> della frase: <span class="la">puella amicam suam vocat</span> = la fanciulla chiama la sua (propria) amica.' },
+  ],
+  tip: 'Suus si traduce «suo» o «loro» in base al soggetto: servi dominum suum timent = i servi temono il loro padrone.',
+  trap: ['<span class="la">mei</span> può essere genitivo di ego o nominativo plurale di meus.', '<span class="la">nos</span> e <span class="la">vos</span> sono sia nominativo sia accusativo.'],
+  ex: [['Ego te amo, tu me non amas.', 'Io ti amo, tu non mi ami.'], ['Tibi gratias ago.', 'Ti ringrazio.']],
+},
+{
+  id: 'v_pass', short: 'Passivo', title: 'Passivo e complemento d’agente', group: 'ver',
+  desc: 'indicativo presente, imperfetto e futuro passivo; infinito presente passivo; complemento d’agente (a/ab + abl.) e di causa efficiente (abl.)',
+  body: [
+    { p: 'Desinenze passive: <span class="la">-or/-r, -ris, -tur, -mur, -mini, -ntur</span>.' },
+    { t: conj(['presente', 'imperfetto', 'futuro'], [
+      ['amor', 'amaris', 'amatur', 'amamur', 'amamini', 'amantur'],
+      ['amabar', 'amabaris', 'amabatur', 'amabamur', 'amabamini', 'amabantur'],
+      ['amabor', 'amaberis', 'amabitur', 'amabimur', 'amabimini', 'amabuntur']]), cap: 'amo — 1ª coniugazione' },
+    { t: conj(['lego (pres.)', 'lego (fut.)', 'audio (pres.)'], [
+      ['legor', 'legeris', 'legitur', 'legimur', 'legimini', 'leguntur'],
+      ['legar', 'legēris', 'legetur', 'legemur', 'legemini', 'legentur'],
+      ['audior', 'audiris', 'auditur', 'audimur', 'audimini', 'audiuntur']]) },
+    { p: 'Infinito presente passivo: <span class="la">amari, moneri, legi, capi, audiri</span>. Chi compie l’azione: <b>persona</b> → <span class="la">a/ab</span> + ablativo (agente); <b>cosa</b> → ablativo semplice (causa efficiente).' },
+  ],
+  tip: 'Per tradurre bene, prova la trasformazione: puellae a magistro laudantur = il maestro loda le fanciulle.',
+  trap: ['<span class="la">legeris</span> (presente) e <span class="la">legēris</span> (futuro) si scrivono uguali senza segni di quantità.', 'L’ablativo senza preposizione di una cosa non è un agente: si traduce «da» ma è causa efficiente.'],
+  ex: [['Puellae a magistro laudantur.', 'Le fanciulle sono lodate dal maestro.'], ['Templa rosis ornabantur.', 'I templi erano ornati di rose.']],
+},
+{
+  id: 'n3', short: 'III decl.', title: 'Terza declinazione', group: 'nom',
+  desc: 'nomi della terza declinazione (imparisillabi, parisillabi, neutri in -e, -al, -ar) con genitivo in -is',
+  body: [
+    { p: 'Il nominativo della 3ª declinazione è imprevedibile: memorizza sempre <b>nominativo e genitivo</b>. Il <b>tema</b> si ottiene togliendo <span class="la">-is</span> al genitivo: <span class="la">rex, reg-is</span>; <span class="la">corpus, corpor-is</span>.' },
+    { t: tab(['Caso', 'rex (m.)', 'corpus (n.)', 'civis (m.)', 'mare (n.)'], [
+      ['Nom.', 'rex', 'corpus', 'civis', 'mare'], ['Gen.', 'reg-is', 'corpor-is', 'civ-is', 'mar-is'], ['Dat.', 'reg-i', 'corpor-i', 'civ-i', 'mar-i'],
+      ['Acc.', 'reg-em', 'corpus', 'civ-em', 'mare'], ['Abl.', 'reg-e', 'corpor-e', 'civ-e', 'mar-i'],
+      ['Nom. pl.', 'reg-es', 'corpor-a', 'civ-es', 'mar-ia'], ['Gen. pl.', 'reg-um', 'corpor-um', 'civ-ium', 'mar-ium'],
+      ['Dat./Abl. pl.', 'reg-ibus', 'corpor-ibus', 'civ-ibus', 'mar-ibus'], ['Acc. pl.', 'reg-es', 'corpor-a', 'civ-es', 'mar-ia']]) },
+    { ul: ['<b>I gruppo</b> (imparisillabi con una consonante prima di -is): gen. pl. <span class="la">-um</span> — rex, miles, homo.', '<b>II gruppo</b> (parisillabi e imparisillabi con due consonanti): gen. pl. <span class="la">-ium</span> — civis, navis, urbs, mons, nox.', '<b>III gruppo</b> (neutri in -e, -al, -ar): abl. <span class="la">-i</span>, pl. <span class="la">-ia</span>, gen. pl. <span class="la">-ium</span> — mare, animal.'] },
+  ],
+  tip: 'Quando trovi una forma in -is, chiediti se è un genitivo singolare (rex → regis) o un dativo/ablativo plurale di un’altra declinazione.',
+  trap: ['<span class="la">-es</span> è nominativo o accusativo plurale.', '<span class="la">corpus, tempus, opus</span> sono neutri della 3ª, non maschili della 2ª.', '<span class="la">pater, mater, frater, canis, iuvenis</span> fanno il genitivo plurale in <span class="la">-um</span>.'],
+  ex: [['Rex populo leges iustas dat.', 'Il re dà al popolo leggi giuste.'], ['Canes greges ovium custodiunt.', 'I cani custodiscono i greggi di pecore.']],
+},
+{
+  id: 'agg2', short: 'Agg. II cl.', title: 'Aggettivi della seconda classe', group: 'nom',
+  desc: 'aggettivi della seconda classe a tre, due e una uscita (acer, fortis, felix); avverbi in -iter e -ter',
+  body: [
+    { t: tab(['Tipo', 'Nom. m.', 'Nom. f.', 'Nom. n.', 'Gen.'], [
+      ['3 uscite', 'acer', 'acris', 'acre', 'acris'], ['2 uscite', 'fortis', 'fortis', 'forte', 'fortis'], ['1 uscita', 'felix', 'felix', 'felix', 'felicis']]) },
+    { p: 'Si declinano come i parisillabi della 3ª: <b>ablativo singolare in -i</b>, genitivo plurale in <span class="la">-ium</span>, neutro plurale in <span class="la">-ia</span>: <span class="la">forti, fortium, fortia</span>.' },
+    { p: 'Avverbi: <span class="la">fortis → fortiter</span>, <span class="la">acer → acriter</span>, <span class="la">celer → celeriter</span>, <span class="la">prudens → prudenter</span>. <span class="la">Omnis</span> = «ogni» al singolare, «tutti» al plurale.' },
+  ],
+  tip: 'Un aggettivo della 2ª classe può accompagnare nomi di qualsiasi declinazione: concorda solo nel caso, non nella desinenza.',
+  trap: ['<span class="la">acri</span> può essere dativo o ablativo singolare.', '<span class="la">omnia</span> è neutro plurale: «tutte le cose».'],
+  ex: [['Omnes homines felices esse cupiunt.', 'Tutti gli uomini desiderano essere felici.']],
+},
+{
+  id: 'v_perf', short: 'Perfetto', title: 'Perfetto, piuccheperfetto e futuro anteriore', group: 'ver',
+  desc: 'indicativo perfetto, piuccheperfetto e futuro anteriore attivi e passivi (participio perfetto + sum)',
+  body: [
+    { p: 'Il <b>tema del perfetto</b> si ricava dal paradigma: <span class="la">amav-i, monu-i, rex-i, leg-i, cep-i, dedi</span>. Le desinenze sono uguali per tutte le coniugazioni.' },
+    { t: conj(['perfetto', 'piuccheperfetto', 'futuro anteriore'], [
+      ['amavi', 'amavisti', 'amavit', 'amavimus', 'amavistis', 'amaverunt'],
+      ['amaveram', 'amaveras', 'amaverat', 'amaveramus', 'amaveratis', 'amaverant'],
+      ['amavero', 'amaveris', 'amaverit', 'amaverimus', 'amaveritis', 'amaverint']]) },
+    { p: 'Il <b>passivo</b> si forma con il participio perfetto + <span class="la">sum</span>: <span class="la">amatus sum</span> (fui amato / sono stato amato), <span class="la">amatus eram</span>, <span class="la">amatus ero</span>. Il participio concorda con il soggetto: <span class="la">urbs capta est</span>.' },
+    { t: tab(['Latino', 'Italiano'], [['perfetto', 'passato remoto o prossimo'], ['piuccheperfetto', 'trapassato prossimo'], ['futuro anteriore', 'futuro anteriore']]) },
+  ],
+  tip: 'Il perfetto latino si traduce con il passato prossimo se l’azione è vicina al presente, con il remoto nella narrazione.',
+  trap: ['<span class="la">venit</span> (viene) e <span class="la">vēnit</span> (venne) si scrivono uguali: il contesto decide.', '<span class="la">-erunt</span> del perfetto non va confuso con <span class="la">-ebunt</span> del futuro.'],
+  ex: [['Caesar Gallos vicit.', 'Cesare vinse i Galli.'], ['Urbs a militibus capta est.', 'La città fu presa dai soldati.']],
+},
+{
+  id: 'n45', short: 'IV-V decl.', title: 'Quarta e quinta declinazione', group: 'nom',
+  desc: 'nomi della quarta declinazione (-us, -us; neutri in -u) e della quinta (-es, -ei); domus; res publica',
+  body: [
+    { t: tab(['Caso', 'exercitus (m.)', 'cornu (n.)', 'res (f.)', 'dies (m.)'], [
+      ['Nom.', 'exercit-us', 'corn-u', 'r-es', 'di-es'], ['Gen.', 'exercit-us', 'corn-us', 'r-ei', 'di-ei'], ['Dat.', 'exercit-ui', 'corn-u', 'r-ei', 'di-ei'],
+      ['Acc.', 'exercit-um', 'corn-u', 'r-em', 'di-em'], ['Abl.', 'exercit-u', 'corn-u', 'r-e', 'di-e'],
+      ['Nom./Acc. pl.', 'exercit-us', 'corn-ua', 'r-es', 'di-es'], ['Gen. pl.', 'exercit-uum', 'corn-uum', 'r-erum', 'di-erum'], ['Dat./Abl. pl.', 'exercit-ibus', 'corn-ibus', 'r-ebus', 'di-ebus']]) },
+    { p: '<span class="la">Domus</span> mescola forme della 2ª e 4ª: <span class="la">domi</span> (a casa), <span class="la">domum</span> (verso casa), <span class="la">domo</span> (da casa). <span class="la">Res</span> ha un significato molto ampio: cosa, fatto, situazione, impresa. <span class="la">Res publica</span> = lo Stato.' },
+  ],
+  tip: 'Per res scegli la traduzione più concreta possibile in base al contesto: res gestae = le imprese.',
+  trap: ['Nella 4ª, <span class="la">-us</span> può essere nominativo o genitivo singolare, nominativo o accusativo plurale.', '<span class="la">dies</span> è maschile; è femminile solo quando indica una data fissata.'],
+  ex: [['Res publica in magno periculo erat.', 'Lo Stato era in grande pericolo.']],
+},
+{
+  id: 'pron_dim', short: 'Dimostr.', title: 'Pronomi dimostrativi e determinativi', group: 'pro',
+  desc: 'pronomi dimostrativi e determinativi is, hic, iste, ille, ipse, idem; eius non riflessivo',
+  body: [
+    { t: tab(['', 'is, ea, id', 'hic, haec, hoc', 'ille, illa, illud'], [
+      ['Nom.', 'is, ea, id', 'hic, haec, hoc', 'ille, illa, illud'], ['Gen.', 'eius', 'huius', 'illius'], ['Dat.', 'ei', 'huic', 'illi'],
+      ['Acc.', 'eum, eam, id', 'hunc, hanc, hoc', 'illum, illam, illud'], ['Abl.', 'eo, ea, eo', 'hoc, hac, hoc', 'illo, illa, illo'],
+      ['Nom. pl.', 'ei/ii, eae, ea', 'hi, hae, haec', 'illi, illae, illa'], ['Gen. pl.', 'eorum, earum, eorum', 'horum, harum, horum', 'illorum, illarum, illorum'], ['Dat./Abl. pl.', 'eis / iis', 'his', 'illis']]) },
+    { ul: ['<span class="la">hic</span> = questo (vicino a chi parla); <span class="la">iste</span> = codesto; <span class="la">ille</span> = quello, egli.', '<span class="la">is</span> = egli, quello: richiama qualcuno già nominato.', '<span class="la">ipse</span> = stesso, in persona; <span class="la">idem</span> = il medesimo.'] },
+    { p: '<span class="la">eius, eorum</span> = «di lui, di loro»: è il possessivo <b>non riflessivo</b>, si riferisce a qualcuno diverso dal soggetto.' },
+  ],
+  tip: 'Eis praemia dedit: «diede loro dei premi» — i casi obliqui di is si traducono spesso con i pronomi atoni (lo, gli, li, loro).',
+  trap: ['<span class="la">hoc</span> può essere nominativo/accusativo neutro o ablativo maschile e neutro.', '<span class="la">ea</span> può essere nominativo femminile, ablativo femminile o neutro plurale.'],
+  ex: [['Haec est patria nostra.', 'Questa è la nostra patria.'], ['Caesar eum laudavit.', 'Cesare lo lodò.']],
+},
+{
+  id: 's_sub', short: 'Temp. caus.', title: 'Proposizioni temporali e causali all’indicativo', group: 'sin',
+  desc: 'proposizioni temporali (postquam, ubi, dum) e causali (quod, quia, quoniam) all’indicativo; si, nisi',
+  body: [
+    { t: tab(['Congiunzione', 'Valore', 'Traduzione'], [
+      ['quod, quia, quoniam', 'causale', 'perché, poiché'],
+      ['postquam, ubi, ut, simul ac', 'temporale', 'dopo che, quando, appena'],
+      ['dum', 'temporale', 'mentre, finché'],
+      ['si / nisi', 'condizionale', 'se / se non']]) },
+    { p: 'Dopo <span class="la">postquam</span> e <span class="la">ubi</span> il latino usa il <b>perfetto</b> anche quando l’italiano preferisce il trapassato: <span class="la">postquam hostes fugerunt</span> = dopo che i nemici furono fuggiti.' },
+    { p: '<span class="la">Dum</span> + presente può indicare un’azione passata: si traduce con l’imperfetto se la reggente è al passato.' },
+  ],
+  tip: 'Metti la subordinata «tra parentesi»: dalla congiunzione fino al suo verbo. Quello che resta è la principale.',
+  trap: ['<span class="la">quod</span> può essere congiunzione («perché») o pronome relativo neutro («che»).', '<span class="la">ubi</span> è anche avverbio interrogativo: «dove?».'],
+  ex: [['Ubi Caesar advenit, hostes fugerunt.', 'Quando Cesare arrivò, i nemici fuggirono.']],
+},
+{
+  id: 'pron_rel', short: 'Relativo', title: 'Pronome relativo e proposizione relativa', group: 'pro',
+  desc: 'pronome relativo qui, quae, quod e proposizione relativa; interrogativi quis, quid',
+  body: [
+    { t: tab(['Caso', 'Maschile', 'Femminile', 'Neutro'], [
+      ['Nom.', 'qui', 'quae', 'quod'], ['Gen.', 'cuius', 'cuius', 'cuius'], ['Dat.', 'cui', 'cui', 'cui'], ['Acc.', 'quem', 'quam', 'quod'], ['Abl.', 'quo', 'qua', 'quo'],
+      ['Nom. pl.', 'qui', 'quae', 'quae'], ['Gen. pl.', 'quorum', 'quarum', 'quorum'], ['Dat./Abl. pl.', 'quibus', 'quibus', 'quibus'], ['Acc. pl.', 'quos', 'quas', 'quae']]) },
+    { p: 'Il relativo prende <b>genere e numero</b> dall’antecedente, ma il <b>caso</b> dalla sua funzione nella relativa: <span class="la">puer quem vides</span> — <i>quem</i> è accusativo perché è l’oggetto di <i>vides</i>.' },
+    { p: 'Se l’antecedente è sottinteso: <span class="la">qui</span> = colui che; <span class="la">ea quae</span> = le cose che, ciò che. Gli interrogativi sono <span class="la">quis?</span> (chi?) e <span class="la">quid?</span> (che cosa?).' },
+  ],
+  tip: 'Traduci prima la principale, poi inserisci la relativa subito dopo il nome a cui si riferisce.',
+  trap: ['<span class="la">quae</span> può essere femminile singolare, femminile plurale o neutro plurale.', '<span class="la">quam</span> è anche la congiunzione del comparativo («di, che»).'],
+  ex: [['Urbs in qua habitamus magna est.', 'La città in cui abitiamo è grande.']],
+},
+{
+  id: 'comp', short: 'Compar.', title: 'Comparativo e superlativo', group: 'nom',
+  desc: 'comparativo (-ior, -ius) e superlativo (-issimus, -errimus, -illimus) degli aggettivi; secondo termine di paragone con quam o ablativo; irregolari bonus, malus, magnus, parvus, multus',
+  body: [
+    { t: tab(['Positivo', 'Comparativo', 'Superlativo'], [
+      ['altus', 'altior, altius', 'altissimus'], ['fortis', 'fortior, fortius', 'fortissimus'], ['pulcher', 'pulchrior, pulchrius', 'pulcherrimus'], ['facilis', 'facilior, facilius', 'facillimus'],
+      ['bonus', 'melior, melius', 'optimus'], ['malus', 'peior, peius', 'pessimus'], ['magnus', 'maior, maius', 'maximus'], ['parvus', 'minor, minus', 'minimus'], ['multus', 'plus (n.), plures', 'plurimus']]) },
+    { p: 'Il comparativo si declina come la 3ª declinazione del I gruppo: abl. <span class="la">-e</span>, gen. pl. <span class="la">-um</span>, neutro pl. <span class="la">-a</span>. Il <b>secondo termine</b> si esprime con <span class="la">quam</span> + stesso caso del primo, oppure con l’<b>ablativo</b>: <span class="la">nihil est amicitiā pulchrius</span>.' },
+    { p: 'Superlativo <b>relativo</b> («il più … di») con il genitivo partitivo o <span class="la">inter</span> + acc.; <b>assoluto</b> con «-issimo» o «molto». Il comparativo assoluto si traduce con «piuttosto, troppo».' },
+  ],
+  tip: 'Trovi quam dopo un comparativo? Cerca il secondo termine nello stesso caso del primo.',
+  trap: ['<span class="la">-ius</span> può essere un comparativo neutro (altius) o un genitivo pronominale (totius).', '<span class="la">minus</span> è anche avverbio: «meno».'],
+  ex: [['Roma maior est quam Tusculum.', 'Roma è più grande di Tuscolo.']],
+},
+{
+  id: 'v_irr', short: 'Irregol.', title: 'Verbi irregolari: volo, nolo, malo, eo, fero, fio', group: 'ver',
+  desc: 'verbi irregolari volo, nolo, malo, eo e composti, fero e composti, fio; imperativo negativo noli/nolite',
+  body: [
+    { t: conj(['volo', 'nolo', 'malo', 'eo', 'fero'], [
+      ['volo', 'nolo', 'malo', 'eo', 'fero'], ['vis', 'non vis', 'mavis', 'is', 'fers'], ['vult', 'non vult', 'mavult', 'it', 'fert'],
+      ['volumus', 'nolumus', 'malumus', 'imus', 'ferimus'], ['vultis', 'non vultis', 'mavultis', 'itis', 'fertis'], ['volunt', 'nolunt', 'malunt', 'eunt', 'ferunt']].map((_, i, a) => a.map((r) => r[i])).slice(0, 5)) },
+    { p: 'Paradigmi: <span class="la">volo, volui, velle</span>; <span class="la">eo, ii, itum, ire</span>; <span class="la">fero, tuli, latum, ferre</span>; <span class="la">fio, factus sum, fieri</span> (diventare, accadere: è il passivo di <span class="la">facio</span>). Composti di eo: <span class="la">redeo, exeo, transeo, abeo</span>; di fero: <span class="la">affero, refero, aufero</span>.' },
+  ],
+  tip: 'Malo = magis volo: si traduce «preferire» e il secondo termine è introdotto da quam.',
+  trap: ['<span class="la">vis</span> è «vuoi» (volo) oppure «forza» (vis, vis).', '<span class="la">it</span> (va) e <span class="la">fert</span> (porta) sono forme brevissime: non saltarle.'],
+  ex: [['Si vis pacem, para bellum.', 'Se vuoi la pace, prepara la guerra.'], ['Noli timere!', 'Non temere!']],
+},
+{
+  id: 'v_dep', short: 'Depon.', title: 'Verbi deponenti e semideponenti', group: 'ver',
+  desc: 'verbi deponenti (forma passiva, significato attivo) delle quattro coniugazioni; utor + ablativo; semideponenti audeo, soleo',
+  body: [
+    { p: 'I deponenti hanno <b>forma passiva</b> e <b>significato attivo</b>: <span class="la">hortor, hortatus sum, hortari</span> = esortare. <span class="la">Hortatur</span> = egli esorta.' },
+    { t: tab(['Coniugazione', 'Paradigma', 'Significato'], [
+      ['1ª', 'hortor, hortatus sum, hortari', 'esortare'], ['2ª', 'vereor, veritus sum, vereri', 'temere'], ['3ª', 'sequor, secutus sum, sequi', 'seguire'], ['mista', 'patior, passus sum, pati', 'soffrire'], ['4ª', 'largior, largitus sum, largiri', 'elargire']]) },
+    { p: 'Il participio perfetto dei deponenti ha valore <b>attivo</b>: <span class="la">hortatus</span> = avendo esortato. <span class="la">Utor, fruor, fungor, potior, vescor</span> reggono l’ablativo. I <b>semideponenti</b> (<span class="la">audeo, ausus sum</span>; <span class="la">soleo, solitus sum</span>) sono attivi al presente e deponenti al perfetto.' },
+  ],
+  tip: 'Prima di tradurre un passivo, controlla sul lessico se il verbo è deponente.',
+  trap: ['<span class="la">loquitur</span> non è «è parlato» ma «parla».', '<span class="la">profectus</span> = «essendo partito», non «partito da qualcuno».'],
+  ex: [['Caesar milites hortatur.', 'Cesare esorta i soldati.'], ['Milites gladiis utuntur.', 'I soldati usano le spade.']],
+},
+{
+  id: 'v_part', short: 'Particip.', title: 'Participio e ablativo assoluto', group: 'ver',
+  desc: 'participio presente, perfetto e futuro; participio congiunto e sostantivato; ablativo assoluto',
+  body: [
+    { t: tab(['Participio', 'Forma', 'Tempo rispetto al verbo reggente', 'Traduzione'], [
+      ['presente', 'amans, amantis', 'contemporaneo', 'che ama, amando'], ['perfetto', 'amatus, -a, -um', 'anteriore (passivo)', 'amato, essendo stato amato'], ['futuro', 'amaturus, -a, -um', 'posteriore', 'che sta per amare, che amerà']]) },
+    { p: 'Il <b>participio congiunto</b> concorda con un elemento della frase: <span class="la">puer a matre laudatus laetus erat</span>.' },
+    { p: 'L’<b>ablativo assoluto</b> è formato da un nome (o pronome) e un participio in ablativo, staccati dal resto della frase: <span class="la">urbe captā</span> = presa la città / dopo che la città fu presa. Esiste anche l’ablativo assoluto <b>nominale</b>: <span class="la">Caesare duce</span> = sotto il comando di Cesare.' },
+  ],
+  tip: 'Per l’ablativo assoluto prova tre rese: participio («presa la città»), gerundio («avendo preso») o subordinata («dopo che…»).',
+  trap: ['Il participio presente in ablativo esce in <span class="la">-e</span> nell’ablativo assoluto (<span class="la">sole oriente</span>).', 'Un participio perfetto non è sempre passivo: nei deponenti è attivo.'],
+  ex: [['Urbe capta, hostes fugerunt.', 'Presa la città, i nemici fuggirono.']],
+},
+{
+  id: 'v_inf', short: 'Infinit.', title: 'Infinito e proposizione infinitiva', group: 'ver',
+  desc: 'infinito presente, perfetto e futuro, attivo e passivo; proposizione infinitiva con soggetto in accusativo dopo verbi di dire, pensare, sapere e dopo constat',
+  body: [
+    { t: tab(['', 'Attivo', 'Passivo', 'Rapporto'], [['Presente', 'amare', 'amari', 'contemporaneità'], ['Perfetto', 'amavisse', 'amatum, -am, -um esse', 'anteriorità'], ['Futuro', 'amaturum, -am, -um esse', '—', 'posteriorità']]) },
+    { p: 'La <b>proposizione infinitiva</b> ha il soggetto in <b>accusativo</b> e il verbo all’<b>infinito</b>. Dipende da verbi di dire, pensare, sapere, sentire (<span class="la">dico, puto, scio, spero</span>) e da espressioni impersonali (<span class="la">constat</span> = è noto).' },
+    { p: 'Si traduce con «che» + indicativo o congiuntivo, scegliendo il tempo italiano in base al rapporto: <span class="la">dixit hostes fugisse</span> = disse che i nemici <b>erano fuggiti</b>.' },
+  ],
+  tip: 'Dopo un verbo di dire o pensare, cerca un accusativo vicino a un infinito: è il soggetto della infinitiva.',
+  trap: ['In una infinitiva ci possono essere due accusativi: uno è il soggetto, l’altro l’oggetto. Decide il senso.', 'Il participio dell’infinito perfetto passivo e futuro concorda con il soggetto in accusativo.'],
+  ex: [['Scio te verum dicere.', 'So che tu dici il vero.'], ['Caesar dixit hostes fugisse.', 'Cesare disse che i nemici erano fuggiti.']],
+},
+{
+  id: 'v_cong', short: 'Cong.', title: 'Congiuntivo, proposizioni finali e consecutive', group: 'ver',
+  desc: 'congiuntivo presente, imperfetto, perfetto, piuccheperfetto; proposizioni finali (ut, ne) e consecutive (ut, ut non) con la consecutio temporum di base',
+  body: [
+    { t: conj(['presente', 'imperfetto', 'perfetto', 'piuccheperf.'], [
+      ['amem', 'amarem', 'amaverim', 'amavissem'], ['ames', 'amares', 'amaveris', 'amavisses'], ['amet', 'amaret', 'amaverit', 'amavisset'],
+      ['amemus', 'amaremus', 'amaverimus', 'amavissemus'], ['ametis', 'amaretis', 'amaveritis', 'amavissetis'], ['ament', 'amarent', 'amaverint', 'amavissent']].map((_, i, a) => a.map((r) => r[i])).slice(0, 4)) },
+    { p: 'Presente: vocale <span class="la">-e-</span> nella 1ª (<span class="la">amem</span>), <span class="la">-a-</span> nelle altre (<span class="la">moneam, legam, capiam, audiam</span>). Imperfetto: infinito + desinenze (<span class="la">amarem, legerem</span>). Sum: <span class="la">sim, essem, fuerim, fuissem</span>.' },
+    { t: tab(['Proposizione', 'Introduttori', 'Traduzione'], [['Finale', 'ut / ne + cong.', 'per, affinché / affinché non'], ['Consecutiva', 'tam, ita, sic, tantus… ut / ut non + cong.', 'così… che / che non']]) },
+    { p: '<b>Consecutio temporum</b>: con la reggente al presente o futuro si usa il congiuntivo presente; con la reggente al passato il congiuntivo imperfetto.' },
+  ],
+  tip: 'Se nella principale c’è tam, ita, tantus o sic, l’ut che segue è quasi sempre consecutivo.',
+  trap: ['<span class="la">ut</span> + indicativo significa «come» o «quando», non «affinché».', '<span class="la">legam</span> può essere futuro o congiuntivo presente: guarda se c’è un ut o un ne.'],
+  ex: [['Milites pugnant ut patriam defendant.', 'I soldati combattono per difendere la patria.']],
+},
+{
+  id: 's_cum', short: 'Cum narr.', title: 'Cum narrativo', group: 'sin',
+  desc: 'cum + congiuntivo imperfetto (contemporaneità) e piuccheperfetto (anteriorità) con valore storico-causale',
+  body: [
+    { p: '<span class="la">Cum</span> + <b>congiuntivo</b> (imperfetto o piuccheperfetto) ha valore temporale-causale ed è tipico della narrazione storica.' },
+    { t: tab(['Tempo', 'Rapporto', 'Traduzioni possibili'], [
+      ['cong. imperfetto', 'contemporaneità', 'mentre, poiché + imperfetto; gerundio presente («avvicinandosi i nemici»)'],
+      ['cong. piuccheperfetto', 'anteriorità', 'dopo che, poiché + trapassato; gerundio passato («essendo giunto»)']]) },
+    { p: 'Distingui <span class="la">cum</span> <b>preposizione</b> (+ ablativo: «con») da <span class="la">cum</span> <b>congiunzione</b> (+ verbo).' },
+  ],
+  tip: 'Trovato un cum, controlla se dopo c’è un ablativo (preposizione) o se la frase prosegue fino a un congiuntivo (congiunzione).',
+  trap: ['Il gerundio passato italiano («avendo preso») rende bene il congiuntivo piuccheperfetto.', 'Cum + indicativo è un semplice temporale: «quando».'],
+  ex: [['Cum esset nox, milites dormiebant.', 'Essendo notte, i soldati dormivano.']],
+},
+];
+
+const METHOD = [
+  { h: 'Leggi tutta la frase', p: 'Prima di tradurre, leggi il periodo intero e osserva la punteggiatura: virgole e punti e virgola separano spesso le proposizioni.' },
+  { h: 'Trova i verbi', p: 'Individua i verbi di modo finito: tanti verbi, tante proposizioni. La principale è quella che non è introdotta da congiunzioni subordinanti o relativi.' },
+  { h: 'Analizza il predicato', p: 'Per il verbo principale stabilisci persona, numero, tempo, modo e diatesi. Ricorda di controllare se è un deponente.' },
+  { h: 'Cerca il soggetto', p: 'Cerca un nominativo che concordi con il verbo. Se non c’è, il soggetto è sottinteso nella desinenza.' },
+  { h: 'Cerca l’oggetto', p: 'Se il verbo è transitivo attivo, cerca l’accusativo: è il complemento oggetto.' },
+  { h: 'Raggruppa e riconosci', p: 'Unisci aggettivi e nomi concordati, preposizioni e casi che reggono. Poi dai una funzione ai casi rimasti: genitivo, dativo, ablativo.' },
+  { h: 'Traduci due volte', p: 'Fai prima una traduzione di servizio, letterale. Poi riscrivila in buon italiano: ordine naturale, lessico adatto al contesto, tempi verbali coerenti.' },
+  { h: 'Rileggi e controlla', p: 'La frase italiana ha senso? Hai tradotto tutte le parole latine? Ogni parola italiana corrisponde a qualcosa nel testo?' },
+];
+
+const SENTENTIAE = [
+  ['Carpe diem.', 'Cogli l’attimo (lett. «cogli il giorno»).', 'Orazio, Odi I, 11', 'carpe è imperativo di carpo; diem è accusativo di dies (5ª declinazione).'],
+  ['Veni, vidi, vici.', 'Venni, vidi, vinsi.', 'Cesare, secondo Svetonio', 'tre perfetti in sequenza, senza congiunzioni (asindeto).'],
+  ['Alea iacta est.', 'Il dado è tratto.', 'Cesare, secondo Svetonio', 'iacta est è il perfetto passivo di iacio.'],
+  ['Mens sana in corpore sano.', 'Mente sana in corpo sano.', 'Giovenale, Satire X', 'in + ablativo: stato in luogo; corpus è un neutro della 3ª.'],
+  ['Gutta cavat lapidem.', 'La goccia scava la pietra.', 'Ovidio, Epistulae ex Ponto', 'lapidem è accusativo di lapis, lapidis (3ª declinazione).'],
+  ['Audentes fortuna iuvat.', 'La fortuna aiuta gli audaci.', 'Virgilio, Eneide X (testo: «audentis»)', 'audentes è un participio presente sostantivato.'],
+  ['Historia magistra vitae.', 'La storia è maestra di vita.', 'Cicerone, De oratore', 'il verbo est è sottinteso; vitae è genitivo di specificazione.'],
+  ['Labor omnia vincit improbus.', 'Il lavoro tenace vince ogni cosa.', 'Virgilio, Georgiche I', 'omnia è neutro plurale sostantivato; labor e improbus sono separati (iperbato).'],
+  ['Omnia vincit amor.', 'L’amore vince tutto.', 'Virgilio, Bucoliche X', 'soggetto in fondo alla frase: cerca sempre il nominativo.'],
+  ['Errare humanum est.', 'Sbagliare è umano.', 'Proverbio di tradizione senecana', 'l’infinito errare fa da soggetto.'],
+  ['Repetita iuvant.', 'Le cose ripetute giovano.', 'Proverbio', 'repetita è participio perfetto neutro plurale sostantivato.'],
+  ['Verba volant, scripta manent.', 'Le parole volano, gli scritti restano.', 'Proverbio medievale', 'verba e scripta sono neutri plurali della 2ª.'],
+  ['Festina lente.', 'Affrettati lentamente.', 'Motto attribuito ad Augusto da Svetonio', 'festina è imperativo della 1ª coniugazione.'],
+  ['Si vis pacem, para bellum.', 'Se vuoi la pace, prepara la guerra.', 'Adattamento da Vegezio', 'vis è la 2ª persona di volo, non il nome «forza».'],
+  ['Dum spiro, spero.', 'Finché respiro, spero.', 'Motto proverbiale', 'dum con valore di «finché».'],
+  ['Fortes fortuna adiuvat.', 'La fortuna aiuta i forti.', 'Terenzio, Phormio', 'fortes è accusativo plurale di un aggettivo della 2ª classe.'],
+  ['Panem et circenses.', 'Pane e giochi del circo.', 'Giovenale, Satire X', 'due accusativi: il verbo («chiedono») è sottinteso.'],
+  ['Cogito, ergo sum.', 'Penso, dunque sono.', 'Cartesio, Principia philosophiae', 'due indicativi presenti di 1ª persona.'],
+  ['Tempus fugit.', 'Il tempo fugge.', 'Da Virgilio, Georgiche III', 'tempus è neutro della 3ª declinazione.'],
+  ['Divide et impera.', 'Dividi e comanda.', 'Massima politica di età moderna', 'due imperativi presenti.'],
+  ['Nulla dies sine linea.', 'Nessun giorno senza una linea.', 'Plinio il Vecchio, riferito al pittore Apelle', 'dies è qui femminile, concordato con nulla.'],
+  ['Per aspera ad astra.', 'Attraverso le difficoltà, fino alle stelle.', 'Motto di ispirazione senecana', 'aspera è neutro plurale sostantivato.'],
+  ['Nosce te ipsum.', 'Conosci te stesso.', 'Traduzione latina del motto delfico', 'ipsum rafforza il pronome te.'],
+  ['Mala tempora currunt.', 'Corrono tempi cattivi.', 'Espressione proverbiale', 'tempora è neutro plurale di tempus.'],
+  ['Ignis aurum probat.', 'Il fuoco mette alla prova l’oro.', 'Seneca, De providentia', 'aurum è neutro della 2ª: nominativo e accusativo uguali.'],
+  ['Amicus certus in re incerta cernitur.', 'L’amico sicuro si riconosce nella situazione incerta.', 'Ennio, citato da Cicerone nel Laelius', 'cernitur è passivo; re è ablativo di res.'],
+  ['Vae victis!', 'Guai ai vinti!', 'Brenno, secondo Livio', 'victis è participio perfetto sostantivato in dativo.'],
+  ['Hannibal ad portas!', 'Annibale alle porte!', 'Cicerone, Filippiche', 'ad + accusativo: moto a luogo.'],
+  ['Senatus populusque Romanus.', 'Il senato e il popolo romano.', 'Formula ufficiale dello Stato romano (SPQR)', '-que unisce le due parole: «e».'],
+  ['Natura non facit saltus.', 'La natura non fa salti.', 'Massima scientifica di età moderna', 'saltus è accusativo plurale della 4ª declinazione.'],
+  ['Sic transit gloria mundi.', 'Così passa la gloria del mondo.', 'Formula medievale', 'transit è la 3ª persona di transeo, composto di eo.'],
+  ['Homo sum, humani nihil a me alienum puto.', 'Sono un uomo: nulla di ciò che è umano ritengo estraneo a me.', 'Terenzio, Heautontimorumenos', 'humani è genitivo partitivo dipendente da nihil.'],
+];
+
+const RANKS = [
+  { xp: 0, name: 'Tiro', it: 'recluta' },
+  { xp: 120, name: 'Civis', it: 'cittadino' },
+  { xp: 350, name: 'Quaestor', it: 'questore' },
+  { xp: 800, name: 'Aedilis', it: 'edile' },
+  { xp: 1600, name: 'Praetor', it: 'pretore' },
+  { xp: 3000, name: 'Consul', it: 'console' },
+  { xp: 5500, name: 'Censor', it: 'censore' },
+  { xp: 9000, name: 'Pontifex Maximus', it: 'pontefice massimo' },
+];
+
+root.VERTO_TOPICS = { TOPICS, GROUPS, METHOD, SENTENTIAE, RANKS };
+if (typeof module !== 'undefined') module.exports = root.VERTO_TOPICS;
+})(typeof window !== 'undefined' ? window : globalThis);
