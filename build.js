@@ -31,7 +31,9 @@ const css = r('src/app.css');
 const ASSETS_DIR = path.join(ROOT, 'assets');
 const hasIcons = fs.existsSync(path.join(ASSETS_DIR, 'icon-192.png'));
 const png = (f) => 'data:image/png;base64,' + fs.readFileSync(path.join(ASSETS_DIR, f)).toString('base64');
-const version = crypto.createHash('sha256').update(code + css + fontCSS).digest('hex').slice(0, 10);
+const hash = crypto.createHash('sha256').update(code + css + fontCSS);
+if (hasIcons) for (const f of fs.readdirSync(ASSETS_DIR).sort()) hash.update(fs.readFileSync(path.join(ASSETS_DIR, f)));
+const version = hash.digest('hex').slice(0, 10);
 const THEME = '#F1F3F5';
 const MARK = '<svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><path d="M18.2 5 29 16 18.2 27 7.4 16z" fill="var(--g-ver)"/><path d="M13.8 5 24.6 16 13.8 27 3 16z" fill="var(--pri)"/></svg>';
 

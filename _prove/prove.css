@@ -19,3 +19,4 @@ figcaption { font-size: 13px; color: #4A5562; }
 .row-label { margin: 28px 0 10px; font-size: 16px; font-weight: 600; }
 .swatches { display: flex; gap: 4px; }
 .swatches i { width: 28px; height: 28px; border-radius: 6px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, 362px); gap: 24px; }

@@ -1,5 +1,6 @@
 /* Controllo dei contrasti WCAG 2.1 AA per ogni palette, in tema chiaro e scuro, ricostruendo la cascata delle variabili di app.css.
-   Uso: node tools/contrast.js [--md]   (con --md stampa una tabella per docs/accessibilita.md) */
+   Uso: node tools/contrast.js [--md]   (con --md stampa una tabella per docs/accessibilita.md).
+   Le proposte di colore scartate (bronzo, affresco) sono nella storia del repository, tappa 4. */
 const fs = require('fs');
 const path = require('path');
 const css = fs.readFileSync(path.join(__dirname, '..', 'src', 'app.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
@@ -43,7 +44,7 @@ const PAIRS = [
 const md = process.argv.includes('--md');
 let fails = 0;
 const rows = [];
-for (const p of [null, 'bronzo', 'affresco']) for (const dark of [false, true]) {
+for (const p of [null]) for (const dark of [false, true]) {
   const v = palette(p, dark);
   for (const [fg, bg, min, where] of PAIRS) {
     const a = v[fg], b = v[bg];

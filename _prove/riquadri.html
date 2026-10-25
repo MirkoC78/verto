@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prove: riquadri a 360 px</title>
+<link rel="stylesheet" href="prove.css">
+</head>
+<body>
+<h1>Verto a 360 px, schermata per schermata</h1>
+<p class="lede">Pagina di prova, non pubblicata nella cartella sito: ogni riquadro è l’app vera con uno stato dimostrativo mai salvato. Tema: <a href="#tema=light">chiaro</a> · <a href="#tema=dark">scuro</a>.</p>
+<div id="frames" class="grid"></div>
+<script>
+const SCREENS = [
+  ['Benvenuto, passo 1', 'onb=0'], ['Benvenuto, passo 2', 'onb=1'], ['Benvenuto, passo 3', 'onb=2'],
+  ['Percorso', 'demo=14'], ['Inizio unità', 'demo=14&lesson=10&step=0&seed=3'], ['Tabella e guida', 'demo=14&lesson=10&step=1&seed=3'],
+  ['Domanda di controllo', 'demo=14&lesson=10&step=2&seed=3'], ['Abbina', 'demo=14&lesson=10&step=5&seed=3'], ['Retroversione', 'demo=14&lesson=10&step=7&seed=3'],
+  ['Versione', 'demo=14&lesson=10&step=10&seed=3'], ['Palestra', 'demo=14&view=gym'], ['Teoria', 'demo=14&view=lib'],
+  ['Argomento', 'demo=14&view=topic:n1'], ['Lessico', 'demo=14&view=words'], ['Profilo', 'demo=14&view=me'],
+  ['Pronuncia: lettura', 'demo=2&lesson=0&step=4&seed=2'], ['Quantità mostrate', 'demo=40&quant=1&lesson=40&step=1&seed=4'], ['Percorso avanzato', 'demo=90'],
+];
+function draw() {
+  const tema = (location.hash.match(/tema=(\w+)/) || [])[1] || 'light';
+  document.getElementById('frames').innerHTML = SCREENS.map(([label, q]) => `<div class="frame"><h2>${label}</h2><iframe title="${label}" src="../dist/verto.html?v=${Date.now()}#${q}&theme=${tema}" loading="lazy"></iframe></div>`).join('');
+}
+addEventListener('hashchange', draw); draw();
+</script>
+</body>
+</html>

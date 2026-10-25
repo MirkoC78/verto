@@ -278,7 +278,8 @@ function confetti() {
 }
 
 /* ---------- Esercizi: sessione (lezione o palestra) ---------- */
-const XP_BASE = { la_it: 12, it_la: 14, analizza: 8, scrivi: 10, completa: 8, lessico: 6, abbina: 10, accorda: 7, lettura: 5, suono: 4, accento: 5, sillabe: 5, quantita: 5, teach: 0 };
+// punti per risposta giusta: una lezione completa vale circa 100 XP, così gli obiettivi giornalieri (30–120) corrispondono a mezza lezione, una o poco più
+const XP_BASE = { la_it: 7, it_la: 8, analizza: 5, scrivi: 6, completa: 5, lessico: 4, abbina: 6, accorda: 5, lettura: 3, suono: 3, accento: 3, sillabe: 3, quantita: 3, teach: 0 };
 const KIND = {
   la_it: 'Traduci in italiano', it_la: 'Traduci in latino', analizza: 'Che forma è?', scrivi: 'Scrivi la forma', completa: 'Completa la frase', lessico: 'Lessico',
   abbina: 'Abbina le coppie', accorda: 'Concorda l’aggettivo', lettura: 'Come si legge?', suono: 'Come suona?', accento: 'Dove cade l’accento?', sillabe: 'Dividi in sillabe', quantita: 'Lunga o breve?',
@@ -382,6 +383,9 @@ function renderItem() {
   const body = $('#ovBody');
   body.innerHTML = (R[it.type] || (() => ''))(it);
   body.classList.remove('fx-in'); void body.offsetWidth; body.classList.add('fx-in');
+  // due opzioni per riga solo se ci stanno tutte: con una forma lunga si va in colonna
+  const two = $('.opts.two', body);
+  if (two && [...two.children].some((b) => b.offsetWidth > two.clientWidth / 2)) two.classList.remove('two');
   $('#ovFootWrap').className = 'ov-foot';
   renderFoot();
   if (it.type === 'la_it' || it.type === 'it_la') refreshAnswer();
@@ -690,7 +694,7 @@ function finalize(res) {
   let gained = 0;
   if (res.ok) {
     SES.combo++; SES.best = Math.max(SES.best, SES.combo); SES.ok++; S.stats.correct++;
-    gained = (XP_BASE[it.type] || 6) + (SES.combo >= 3 ? Math.min(SES.combo, 6) * 2 : 0) + (it.s && it.s.src === 'gen' ? 2 : 0) + (res.typed ? 3 : 0);
+    gained = (XP_BASE[it.type] || 4) + (SES.combo >= 3 ? 2 : 0) + (it.s && it.s.src === 'gen' ? 1 : 0) + (res.typed ? 2 : 0);
     if (it.type === 'la_it' || it.type === 'it_la') S.stats.translated++;
     if (it.type === 'analizza' || it.type === 'scrivi') S.stats.forms++;
     if (res.typed && !res.self) S.stats.typedOK++;
@@ -1104,12 +1108,12 @@ function viewGym() {
   const row = (act, m, icon, title, sub, extra = '', dis = false) => `<li><button class="rowbtn" data-act="${act}" ${m ? `data-m="${m}"` : ''} ${dis ? 'disabled' : ''}><span class="ico">${icon}</span><span class="txt"><b>${title}</b><span>${sub}</span></span>${extra}${I.chev}</button></li>`;
   return `<header class="page-head"><h1>Palestra</h1><p class="lede">Allenati come vuoi sugli argomenti che hai già aperto: traduzioni, forme e parole.</p></header>
     <section class="sec"><h2 class="sec-title">Traduzione</h2>
-      <div class="card stack"><div class="field"><span class="label" id="lvLab">Difficoltà</span><div class="seg" role="group" aria-labelledby="lvLab">${Object.entries(LEVELS).map(([k, l]) => `<button data-act="pracLevel" data-v="${k}" aria-pressed="${p.level === k}">${l.label}</button>`).join('')}</div></div><p class="note level-desc">${esc(LEVELS[p.level] ? LEVELS[p.level].desc : '')}</p></div>
+      <div class="card stack"><div class="field"><span class="label" id="lvLab">Difficoltà</span><div class="seg four" role="group" aria-labelledby="lvLab">${Object.entries(LEVELS).map(([k, l]) => `<button data-act="pracLevel" data-v="${k}" aria-pressed="${p.level === k}">${l.label}</button>`).join('')}</div></div><p class="note level-desc">${esc(LEVELS[p.level] ? LEVELS[p.level].desc : '')}</p></div>
       ${translateCards(T, true)}</section>
     <section class="sec"><h2 class="sec-title">Allenamento su misura</h2>
       <div class="card custom">
         ${units.length ? `<div class="field"><label for="pracUnit">Argomento</label><div class="select"><select id="pracUnit">${units.map((u) => `<option value="${u.id}" ${u.id === unit ? 'selected' : ''}>${esc(u.title)}</option>`).join('')}</select></div></div>` : '<p class="note">Gli argomenti si aprono facendo le lezioni del percorso.</p>'}
-        <div class="field"><span class="label" id="tyLab">Esercizi</span><div class="seg" role="group" aria-labelledby="tyLab">${[['misto', 'Misti'], ['frasi', 'Frasi'], ['forme', 'Forme'], ['parole', 'Parole']].map(([v, l]) => `<button data-act="pracType" data-v="${v}" aria-pressed="${p.type === v}">${l}</button>`).join('')}</div></div>
+        <div class="field"><span class="label" id="tyLab">Esercizi</span><div class="seg four" role="group" aria-labelledby="tyLab">${[['misto', 'Misti'], ['frasi', 'Frasi'], ['forme', 'Forme'], ['parole', 'Parole']].map(([v, l]) => `<button data-act="pracType" data-v="${v}" aria-pressed="${p.type === v}">${l}</button>`).join('')}</div></div>
         <div class="setting"><div class="grow"><b>Solo parole già incontrate</b><span>Spegni per usare tutto il lessico degli argomenti aperti</span></div><label class="switch"><input type="checkbox" data-set="pracNarrow" ${p.wide ? '' : 'checked'} aria-label="Solo parole già incontrate"><i></i></label></div>
         <button class="btn big block" data-act="practice" data-m="${p.type}" ${units.length ? '' : 'disabled'}>Allenati</button></div></section>
     <section class="sec"><h2 class="sec-title">Altro</h2><div class="card flush"><ul class="list">
@@ -1238,14 +1242,14 @@ function viewMe() {
     <section class="sec"><h2 class="sec-title">Insegne</h2><div class="card"><div class="badges">${BADGES.map((b) => `<div class="badge ${S.badges[b.id] ? '' : 'off'}">${medal(b, !!S.badges[b.id])}<b lang="la">${esc(b.name)}</b><span>${esc(b.desc)}</span></div>`).join('')}</div></div></section>
     <section class="sec"><h2 class="sec-title">Studio</h2><div class="card flush">
       <div class="setting"><div class="grow"><b>Posizione nel percorso</b><span>${esc(cu.unit.title)}: ${esc(cu.lesson.title)}</span></div><button class="btn small ghost" data-act="placement">Cambia</button></div>
-      <div class="setting wrap"><div class="grow"><b>Obiettivo giornaliero</b><span>XP al giorno</span></div><div class="seg">${[30, 50, 80, 120].map((g) => `<button data-act="goal" data-v="${g}" aria-pressed="${S.goal === g}">${g}</button>`).join('')}</div></div>
+      <div class="setting wrap"><div class="grow"><b>Obiettivo giornaliero</b><span>XP al giorno</span></div><div class="seg four" role="group" aria-label="Obiettivo giornaliero">${[30, 50, 80, 120].map((g) => `<button data-act="goal" data-v="${g}" aria-pressed="${S.goal === g}">${g}</button>`).join('')}</div></div>
       ${sw('quant', 'Mostra le quantità', 'Vocali lunghe segnate (ā, ē, ī…) in frasi, tabelle e lessico; se le scrivi sbagliate te lo segnalo, ma non conta', set.quant)}
       ${sw('input', 'Rispondi scrivendo', 'Nelle traduzioni usa la tastiera al posto delle tessere', set.input === 'keys')}
       ${sw('gen', 'Frasi generate', 'Oltre alle frasi verificate, frasi nuove create sul dispositivo', set.gen)}</div></section>
     <section class="sec"><h2 class="sec-title">Suoni e aspetto</h2><div class="card flush">
       ${sw('sound', 'Suoni', 'Segnali sonori per le risposte', set.sound)}
       ${sw('voice', 'Lettura ad alta voce', 'Pronuncia scolastica, con la voce italiana del dispositivo', set.voice)}
-      <div class="setting wrap"><div class="grow"><b>Tema</b><span>Colori dell’app</span></div><div class="seg">${[['auto', 'Automatico'], ['light', 'Chiaro'], ['dark', 'Scuro']].map(([v, l]) => `<button data-act="theme" data-v="${v}" aria-pressed="${set.theme === v}">${l}</button>`).join('')}</div></div></div></section>
+      <div class="setting wrap"><div class="grow"><b>Tema</b><span>Colori dell’app</span></div><div class="seg" role="group" aria-label="Tema">${[['auto', 'Automatico'], ['light', 'Chiaro'], ['dark', 'Scuro']].map(([v, l]) => `<button data-act="theme" data-v="${v}" aria-pressed="${set.theme === v}">${l}</button>`).join('')}</div></div></div></section>
     <section class="sec"><h2 class="sec-title">App e dati</h2><div class="card flush">
       ${sw('online', 'Wikizionario', 'Collegamento al dizionario online: si invia solo la parola cercata', set.online)}
       <div class="setting"><div class="grow"><b>Installa l’app</b><span>${isStandalone() ? 'Verto è già installata.' : 'Sul telefono funziona anche senza rete.'}</span></div><button class="btn small ghost" data-act="install" ${isStandalone() ? 'disabled' : ''}>Installa</button></div>
@@ -1273,7 +1277,7 @@ function drawOnb() {
   } else if (onb.step === 1) {
     h += say('Fin dove sei arrivato in classe? Apro le unità che hai già studiato; le altre si aprono facendo le lezioni. Potrai cambiarlo dal profilo, anche tornando indietro.', 'think', 76) + placementList(onb.place, 'onbPlace') + `<button class="btn big block" data-act="onbNext">Avanti</button>`;
   } else {
-    h += say('Ultime due scelte. Potrai cambiarle quando vuoi nel profilo.', 'happy', 76) + `<div class="card flush"><div class="setting wrap"><div class="grow"><b>Obiettivo giornaliero</b><span>Una lezione vale circa 80 XP</span></div><div class="seg">${[[30, 'Calmo'], [50, 'Normale'], [80, 'Serio'], [120, 'Intenso']].map(([g, l]) => `<button data-act="onbGoal" data-v="${g}" aria-pressed="${onb.goal === g}">${l}</button>`).join('')}</div></div>
+    h += say('Ultime due scelte. Potrai cambiarle quando vuoi nel profilo.', 'happy', 76) + `<div class="card flush"><div class="setting wrap"><div class="grow"><b>Obiettivo giornaliero</b><span>Una lezione completa vale circa 100 XP</span></div><div class="seg four" role="group" aria-label="Obiettivo giornaliero">${[[30, 'Calmo'], [50, 'Normale'], [80, 'Serio'], [120, 'Intenso']].map(([g, l]) => `<button data-act="onbGoal" data-v="${g}" aria-pressed="${onb.goal === g}">${l}</button>`).join('')}</div></div>
       <div class="setting"><div class="grow"><b>Mostra le quantità</b><span>Facoltative: le vocali lunghe segnate con il trattino (rosā, amāre). Aiutano a leggere e a distinguere le forme.</span></div><label class="switch"><input type="checkbox" id="onbQuant" ${onb.quant ? 'checked' : ''} aria-label="Mostra le quantità"><i></i></label></div></div>
       <button class="btn big block" data-act="onbDone">Iniziamo il viaggio</button>`;
   }
@@ -1447,7 +1451,7 @@ function updateJump() {
 }
 
 /* ---------- Avvio ---------- */
-// anteprima per i confronti e le schermate: #palette=bronzo&demo=12&view=gym&theme=dark (stato dimostrativo, mai salvato)
+// anteprima per le prove e le schermate: #demo=12&view=gym&theme=dark (stato dimostrativo, mai salvato)
 const HASH = Object.fromEntries(location.hash.slice(1).split('&').filter(Boolean).map((kv) => kv.split('=')));
 function demoState(n) {
   const today = dayKey();
@@ -1461,10 +1465,11 @@ function demoState(n) {
 }
 function boot() {
   E.loadLexicon(window.VERTO_LEX);
-  if (HASH.palette) document.documentElement.setAttribute('data-palette', HASH.palette);
   if (HASH.seed) { let a = +HASH.seed; LS.init({ rand: () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; } }); }
-  if (HASH.demo != null) { NOSAVE = true; demoState(Math.min(FLAT.length - 1, +HASH.demo || 0)); if (HASH.theme) S.settings.theme = HASH.theme; if (HASH.quant) S.settings.quant = HASH.quant === '1'; if (HASH.view) VIEW = HASH.view; }
+  if (HASH.demo != null) { NOSAVE = true; demoState(Math.min(FLAT.length - 1, +HASH.demo || 0)); if (HASH.quant) S.settings.quant = HASH.quant === '1'; if (HASH.view) VIEW = decodeURIComponent(HASH.view); }
+  else if (HASH.onb != null) { NOSAVE = true; onb = { step: Math.min(2, +HASH.onb || 0), name: '', place: '', goal: 50, quant: false }; }
   else load();
+  if (NOSAVE && HASH.theme) S.settings.theme = HASH.theme;
   try { if (!NOSAVE && navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) { /* ignora */ }
   applyTheme();
   const mq = matchMedia('(prefers-color-scheme: dark)');
@@ -1477,5 +1482,9 @@ function boot() {
 // per la verifica automatica nel browser
 window.VertoApp = { S: () => S, ses: () => SES, cur: () => SES && SES.cur, startLesson, startPractice, FLAT, render, set: (o) => { Object.assign(S, o); save(); render(); }, setVIEW: (v) => { VIEW = v; render(); } };
 // prima si mostra la schermata di avvio, poi si prepara il lessico (qualche centinaio di millisecondi su un telefono)
-requestAnimationFrame(() => setTimeout(boot, 0));
+// in una scheda in secondo piano il primo disegno non arriva: si parte comunque dopo un attimo
+let booted = false;
+const go = () => { if (!booted) { booted = true; boot(); } };
+requestAnimationFrame(() => setTimeout(go, 0));
+setTimeout(go, 150);
 })();

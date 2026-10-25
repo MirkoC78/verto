@@ -3,25 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Prove: la guida</title>
+<title>Prove: Giano</title>
 <link rel="stylesheet" href="prove.css">
 </head>
 <body>
-<h1>La guida: tre idee</h1>
-<p class="lede">Ogni figura è un solo disegno SVG con contorno uniforme; le cinque espressioni cambiano volto e braccia. Sotto i 64 px si disegna solo il busto (ultima colonna, 48 px).</p>
+<h1>La guida: Giano</h1>
+<p class="lede">Un solo disegno SVG con contorno uniforme; le cinque espressioni cambiano volti e braccia. Sotto i 64 px si disegna solo il busto. Ingrandire con #size=300.</p>
 <div id="out"></div>
 <script src="../src/guide.js"></script>
 <script>
 const G = window.VERTO_GUIDE;
 const MOODS = [['idle', 'normale'], ['happy', 'contenta'], ['think', 'pensierosa'], ['sad', 'triste'], ['cheer', 'esultante']];
-const only = (location.hash.match(/solo=(\w+)/) || [])[1];
 const big = +((location.hash.match(/size=(\d+)/) || [])[1] || 140);
-document.getElementById('out').innerHTML = Object.entries(G.CHARS).filter(([id]) => !only || id === only).map(([id, ch]) => `
-  <section class="char"><h2>${ch.name}</h2><p>${ch.about}</p>
-    <div class="moods">${MOODS.map(([m, l]) => `<figure>${G.svg(m, big, id)}<figcaption>${l}</figcaption></figure>`).join('')}
-      <figure class="busts">${G.svg('idle', 48, id)}${G.svg('happy', 48, id)}${G.svg('sad', 48, id)}<figcaption>busto, 48 px</figcaption></figure></div>
-    <div class="moods dark">${MOODS.map(([m]) => `<figure>${G.svg(m, 96, id)}</figure>`).join('')}</div>
-  </section>`).join('');
+document.getElementById('out').innerHTML = `<section class="char">
+  <div class="moods">${MOODS.map(([m, l]) => `<figure>${G.svg(m, big)}<figcaption>${l}</figcaption></figure>`).join('')}</div>
+  <div class="moods">${[56, 48, 40, 32].map((s) => `<figure class="busts">${G.svg('idle', s)}${G.svg('happy', s)}${G.svg('sad', s)}<figcaption>busto, ${s} px</figcaption></figure>`).join('')}</div>
+  <div class="moods dark">${MOODS.map(([m]) => `<figure>${G.svg(m, 96)}</figure>`).join('')}${G.svg('happy', 48)}</div></section>`;
 </script>
 </body>
 </html>
