@@ -7,9 +7,11 @@
 (function () {
   'use strict';
   const A = window.VertoApp, E = window.VertoEngine, SN = window.VertoSentence;
-  const R = window.__giocatore = { lezioni: 0, esercizi: 0, tipi: {}, errori: [], console: [], fuori: [], fatto: false, corrente: null };
+  const R = window.__giocatore = { lezioni: 0, esercizi: 0, generate: 0, laIt: 0, scritte: 0, tipi: {}, errori: [], console: [], fuori: [], fatto: false, corrente: null };
   const origErr = console.error;
   console.error = function (...a) { R.console.push(a.map(String).join(' ').slice(0, 300)); origErr.apply(console, a); };
+  const origWarn = console.warn;
+  console.warn = function (...a) { R.console.push('avviso: ' + a.map(String).join(' ').slice(0, 300)); origWarn.apply(console, a); };
   window.addEventListener('error', (e) => R.console.push('errore: ' + e.message));
   window.addEventListener('unhandledrejection', (e) => R.console.push('promessa: ' + String(e.reason).slice(0, 200)));
   const $ = (s) => document.querySelector(s);
@@ -77,12 +79,17 @@
     const opts = $$('#ovBody .opt');
     const pickIdx = (test) => { const k = it.options.findIndex(test); if (k < 0) throw new Error('nessuna opzione giusta tra ' + JSON.stringify(it.options)); click(opts[k]); };
     switch (it.type) {
-      case 'analizza': pickIdx((o) => it.valid.includes(o)); break;
+      case 'analizza': { const valid = A.S().settings.quant && it.validQ ? it.validQ : it.valid; pickIdx((o) => valid.includes(o)); break; }
       case 'completa': case 'accorda': pickIdx((o) => E.norm(o) === E.norm(it.answer)); break;
       case 'lessico': pickIdx((o) => o === it.uid); break;
       case 'lettura': case 'suono': case 'accento': case 'sillabe': case 'quantita': pickIdx((o) => o === it.right); break;
       case 'scrivi': { const t = $('#typed'); t.value = it.answers[0]; t.dispatchEvent(new Event('input', { bubbles: true })); break; }
       case 'la_it': {
+        if (++R.laIt % 3 === 0) {
+          if (c.inputMode !== 'keys') click($('[data-act="toggleInput"]'));
+          const t = $('#typed'); t.value = it.s.it[R.laIt % it.s.it.length]; t.dispatchEvent(new Event('input', { bubbles: true })); R.scritte++;
+          break;
+        }
         const used = new Set();
         const words = it.s.it[0].replace(/[.,;:!?«»"]/g, ' ').split(/\s+/).filter(Boolean);
         for (const w of words) {
@@ -107,6 +114,7 @@
   async function playItem(where) {
     const c = A.cur(), it = c.it;
     R.esercizi++; R.tipi[it.type] = (R.tipi[it.type] || 0) + 1;
+    if (it.s && it.s.src === 'gen') R.generate++;
     checkWidth(where + ' ' + it.type); a11y(where + ' ' + it.type);
     if (it.type === 'teach') { click($('#nextBtn')); return; }
     if (it.type === 'abbina') {

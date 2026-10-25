@@ -24,23 +24,9 @@ function dayKey(d = new Date()) { return d.getFullYear() + '-' + String(d.getMon
 function addDays(k, n) { const [y, m, d] = k.split('-').map(Number); return dayKey(new Date(y, m - 1, d + n)); }
 function daysBetween(a, b) { const [y1, m1, d1] = a.split('-').map(Number); const [y2, m2, d2] = b.split('-').map(Number); return Math.round((new Date(y2, m2 - 1, d2) - new Date(y1, m1 - 1, d1)) / 864e5); }
 const ROMAN = (n) => { const r = [['M', 1000], ['CM', 900], ['D', 500], ['CD', 400], ['C', 100], ['XC', 90], ['L', 50], ['XL', 40], ['X', 10], ['IX', 9], ['V', 5], ['IV', 4], ['I', 1]]; let s = ''; for (const [k, v] of r) while (n >= v) { s += k; n -= v; } return s; };
-function normIt(s) {
-  return String(s).toLowerCase().replace(/[’`´]/g, "'").normalize('NFD').replace(/[\u0300-\u036F]/g, '')
-    .replace(/'/g, ' ').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
-}
-function lev(a, b) {
-  if (a === b) return 0;
-  const m = a.length, n = b.length; if (!m) return n; if (!n) return m;
-  let prev = Array.from({ length: n + 1 }, (_, i) => i), cur = new Array(n + 1);
-  for (let i = 1; i <= m; i++) {
-    cur[0] = i;
-    for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
-    [prev, cur] = [cur, prev];
-  }
-  return prev[n];
-}
-const sim = (a, b) => (!a && !b ? 1 : 1 - lev(a, b) / Math.max(a.length, b.length));
-const simLoose = (a, b) => Math.max(sim(a, b), sim(a.split(' ').sort().join(' '), b.split(' ').sort().join(' ')) * 0.96);
+// confronto delle traduzioni italiane: src/check.js
+const CK = window.VertoCheck;
+const normIt = CK.normIt;
 
 /* ---------- Icone ---------- */
 const svg = (d, o = '') => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${o}>${d}</svg>`;
@@ -341,8 +327,9 @@ function buildReview() {
         else {
           const inScope = e.forms.filter((x) => sc.formOK(e, x.key) && x.c !== 'voc');
           const valid = uniq(inScope.filter((x) => x.f === f.f).map((x) => x.d));
+          const validQ = uniq(inScope.filter((x) => x.q.normalize('NFC') === f.q.normalize('NFC')).map((x) => x.d));
           const dis = shuffle(uniq(inScope.map((x) => x.d).filter((d) => !valid.includes(d)))).slice(0, 3);
-          if (dis.length) it = { type: 'analizza', uid: e.uid, form: f.f, q: f.q, correct: f.d, valid, options: shuffle([f.d, ...dis]), topic: focusOfReq(f.req), key: f.key };
+          if (dis.length) it = { type: 'analizza', uid: e.uid, form: f.f, q: f.q, correct: f.d, valid, validQ, options: shuffle([f.d, ...dis]), topic: focusOfReq(f.req), key: f.key };
         }
       }
     } else if (m.k === 'l') {
@@ -398,6 +385,7 @@ function renderItem() {
   // due opzioni per riga solo se ci stanno tutte: con una forma lunga si va in colonna
   const two = $('.opts.two', body);
   if (two && [...two.children].some((b) => b.offsetWidth > two.clientWidth / 2)) two.classList.remove('two');
+  markWideTables(body);
   $('#ovFootWrap').className = 'ov-foot';
   renderFoot();
   if (it.type === 'la_it' || it.type === 'it_la') refreshAnswer();
@@ -544,9 +532,11 @@ function renderScrivi(it) {
     <label class="sr" for="typed">La forma in latino</label><input id="typed" class="typed la" aria-describedby="exText" lang="la" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Scrivi la forma…">${S.settings.quant ? macronKeys() : ''}`;
 }
 function renderCompleta(it) {
-  return `${exHead('Completa la frase')}<div class="stack">${latinLine(it.s, { blank: it.idx, newWords: it.newWords })}<p class="muted">${esc(it.s.it[0])}</p></div>${optsHtml(it.options.map((o) => quantOf(it.s.tokens[it.idx].uid, o)), esc, true, true)}`;
+  return `${exHead('Completa la frase')}<div class="stack">${latinLine(it.s, { blank: it.idx, newWords: it.newWords })}<p class="muted">${esc(it.s.it[0])}</p></div>${optsHtml(it.options.map((o, k) => (it.optionsQ ? showQ(o, it.optionsQ[k]) : quantOf(it.s.tokens[it.idx].uid, o))), esc, true, true)}`;
 }
-// la forma con le quantità, se l'impostazione è attiva
+// la forma come si mostra: con le quantità (q) se l'impostazione è attiva, con la stessa maiuscola della forma scritta
+const showQ = (f, q) => (S.settings.quant && q ? (/^[A-Z]/.test(f) ? q.charAt(0).toUpperCase() + q.slice(1) : q) : f);
+// ripiego per gli esercizi senza quantità registrate: la prima forma con quella grafia
 function quantOf(uid, f) {
   if (!S.settings.quant) return f;
   const e = ent(uid);
@@ -560,7 +550,7 @@ function renderLessico(it) {
 }
 function renderAccorda(it) {
   const e = ent(it.uid), n = ent(it.noun.uid);
-  return `${exHead('Concorda l’aggettivo con il nome')}<div class="stack"><p class="phrase" lang="la">${esc(showForm(it.noun.f, it.noun.q))} <span class="slot">?</span></p><p class="subline">${esc(it.noun.d)} di <span class="la" lang="la">${esc(headOf(n))}</span>; aggettivo: <span class="la" lang="la">${esc(lemmaOf(e))}</span> (${esc(shortM(e.it))})</p></div>${optsHtml(it.options.map((o) => quantOf(it.uid, o)), esc, true, true)}`;
+  return `${exHead('Concorda l’aggettivo con il nome')}<div class="stack"><p class="phrase" lang="la">${esc(showForm(it.noun.f, it.noun.q))} <span class="slot">?</span></p><p class="subline">${esc(it.noun.d)} di <span class="la" lang="la">${esc(headOf(n))}</span>; aggettivo: <span class="la" lang="la">${esc(lemmaOf(e))}</span> (${esc(shortM(e.it))})</p></div>${optsHtml(it.options.map((o, k) => (it.optionsQ ? showQ(o, it.optionsQ[k]) : quantOf(it.uid, o))), esc, true, true)}`;
 }
 function renderAbbina(it) {
   const c = SES.cur;
@@ -595,12 +585,6 @@ function matchStep() {
 }
 
 /* ---------- Controllo delle risposte ---------- */
-function bestItalianMatch(s, ans) {
-  const a = normIt(ans);
-  let best = 0, bestRef = s.it[0];
-  for (const r of s.it) { const v = simLoose(a, normIt(r)); if (v > best) { best = v; bestRef = r; } }
-  return { best, bestRef };
-}
 // quantità scritte dallo studente: si segnalano quelle diverse dal riferimento (non contano come errore)
 function quantWarnings(typedWords, refWords) {
   const out = [];
@@ -631,13 +615,13 @@ function doCheck() {
       if (!c.chosen.length) return;
       const built = c.chosen.map((k) => c.tiles[k].label).join(' ');
       const ok = it.s.it.some((r) => normIt(r) === normIt(built));
-      res = { ok, sol: it.s.it[0], given: built, near: !ok && simLoose(normIt(built), normIt(it.s.it[0])) > 0.7 };
+      res = { ok, sol: it.s.it[0], given: built, near: !ok && CK.sim(normIt(built), normIt(it.s.it[0])) > 0.8 };
     } else {
       const ans = $('#typed').value.trim();
       if (!ans) return toast('Scrivi la traduzione.');
-      const m = bestItalianMatch(it.s, ans);
-      if (m.best >= 0.88) res = { ok: true, sol: m.bestRef, given: ans, typed: true, note: normIt(ans) !== normIt(m.bestRef) ? 'Versione di riferimento: ' + m.bestRef : '' };
-      else return selfGrade(it, ans, m.bestRef);
+      const m = CK.italian(it.s.it, ans);
+      if (m.ok) res = { ok: true, sol: m.ref, given: ans, typed: true, note: m.exact ? '' : 'Attento all’ortografia: ' + m.ref };
+      else return selfGrade(it, ans, m.ref);
     }
   } else if (it.type === 'it_la') {
     const solShown = laShow(it.s);
@@ -658,9 +642,10 @@ function doCheck() {
       res = { ok, sol: solShown, latin: true, typed: true, quant: ok && S.settings.quant ? quantWarnings(typedW, ok && tl.join(' ') === SN.tiles(it.s.la).join(' ') ? refQ : []) : [] };
     }
   } else if (it.type === 'analizza') {
-    const ok = it.valid.includes(it.options[c.picked]);
-    res = { ok, sol: it.correct, others: it.valid.length > 1 ? it.valid : null };
-    markOptions(ok, (k) => it.valid.includes(it.options[k]));
+    const valid = S.settings.quant && it.validQ ? it.validQ : it.valid;
+    const ok = valid.includes(it.options[c.picked]);
+    res = { ok, sol: it.correct, others: valid.length > 1 ? valid : null };
+    markOptions(ok, (k) => valid.includes(it.options[k]));
   } else if (it.type === 'scrivi') {
     const raw = $('#typed').value.trim();
     if (!raw) return toast('Scrivi la forma.');
@@ -671,7 +656,7 @@ function doCheck() {
     const ok = E.norm(it.options[c.picked]) === E.norm(it.answer);
     res = { ok, sol: laShow(it.s), latin: true };
     markOptions(ok, (k) => E.norm(it.options[k]) === E.norm(it.answer));
-    const b = $('#blank'); if (b) b.textContent = quantOf(it.s.tokens[it.idx].uid, it.answer);
+    const b = $('#blank'); if (b) b.textContent = it.aq ? showQ(it.answer, it.aq) : quantOf(it.s.tokens[it.idx].uid, it.answer);
   } else if (it.type === 'lessico') {
     const ok = it.options[c.picked] === it.uid;
     const e = ent(it.uid);
@@ -692,7 +677,7 @@ function doCheck() {
 function selfGrade(it, ans, sol) {
   const c = SES.cur; c.answered = true;
   $('#typed').readOnly = true;
-  $('#ovFoot').innerHTML = `<div class="fb">${guide('think', 52)}<div class="fb-txt"><h3>Confronta con la soluzione</h3><p class="sol">${esc(sol)}</p>${it.s.it.length > 1 ? `<p class="note">Anche: ${it.s.it.filter((x) => x !== sol).slice(0, 2).map(esc).join('; ')}</p>` : ''}<p class="note">La tua traduzione è diversa da quelle previste: giudica tu, con onestà.</p></div></div>
+  $('#ovFoot').innerHTML = `<div class="fb">${guide('think', 52)}<div class="fb-txt"><h3>Confronta con la soluzione</h3><p class="sol">${esc(sol)}</p>${it.s.it.length > 1 ? `<p class="note">Anche: ${it.s.it.filter((x) => x !== sol).slice(0, 2).map(esc).join('; ')}</p>` : ''}<p class="note">La tua traduzione è diversa da quelle previste. Prima di giudicare, controlla: chi compie l’azione? che cosa succede, e quando? su chi o su che cosa? c’è una negazione?</p></div></div>
     <div class="btns"><button class="btn err" data-act="self" data-v="0">Ho sbagliato</button><button class="btn ok" data-act="self" data-v="1">Era giusta</button></div>`;
   c.selfData = { ans, sol };
 }
@@ -708,7 +693,7 @@ function finalize(res) {
   let gained = 0;
   if (res.ok) {
     SES.combo++; SES.best = Math.max(SES.best, SES.combo); SES.ok++; S.stats.correct++;
-    gained = (XP_BASE[it.type] || 4) + (SES.combo >= 3 ? 2 : 0) + (it.s && it.s.src === 'gen' ? 1 : 0) + (res.typed ? 2 : 0);
+    gained = (XP_BASE[it.type] || 4) + (SES.combo >= 3 ? 2 : 0) + (it.s && it.s.src === 'gen' ? 1 : 0) + (res.typed && !res.self ? 2 : 0);
     if (it.type === 'la_it' || it.type === 'it_la') S.stats.translated++;
     if (it.type === 'abbina' && SES.mode === 'lessico') it.pairs.forEach((p) => srs(p.uid, true));
     if (it.type === 'analizza' || it.type === 'scrivi') S.stats.forms++;
@@ -830,7 +815,15 @@ function endSession() {
 
 /* ---------- Ripetizione dilazionata ---------- */
 const BOX_DAYS = [0, 1, 3, 7, 14, 30];
-function srs(uid, ok) { const v = S.vocab[uid] || { box: 0, due: dayKey() }; v.box = ok ? Math.min(5, v.box + 1) : 1; v.due = addDays(dayKey(), BOX_DAYS[v.box]); S.vocab[uid] = v; }
+// un solo passo avanti al giorno per parola: le risposte giuste ripetute nella stessa giornata (scheda, scelta, coppie)
+// non allungano l'intervallo; un errore la riporta alla prima scatola e il recupero nello stesso giorno non la fa avanzare
+function srs(uid, ok) {
+  const today = dayKey();
+  const v = S.vocab[uid] || { box: 0, due: today };
+  if (!ok) { v.box = 1; v.due = addDays(today, BOX_DAYS[1]); v.last = today; }
+  else if (v.last !== today) { v.box = Math.min(5, v.box + 1); v.due = addDays(today, BOX_DAYS[v.box]); v.last = today; }
+  S.vocab[uid] = v;
+}
 // parole incontrate: quelle delle lezioni già superate o già fatte (anche le unità aperte scegliendo la posizione),
 // con la lezione in cui ciascuna compare; le parole delle lezioni ancora da fare restano nascoste
 function metWords() {
@@ -867,7 +860,12 @@ function startVocabDrill() {
 }
 
 /* ---------- Popup della parola e fogli ---------- */
-function closePop() { const p = $('#pop'); if (p) p.remove(); $$('.w.open').forEach((w) => w.classList.remove('open')); }
+function closePop() {
+  const p = $('#pop'); if (!p) return;
+  const inside = p.contains(document.activeElement), w = $('.w.open');
+  p.remove(); $$('.w.open').forEach((x) => x.classList.remove('open'));
+  if (inside && w && w.isConnected) w.focus({ preventScroll: true });
+}
 function wordPop(btn, tok) {
   closePop();
   const e = ent(tok.uid); if (!e) return;
@@ -888,6 +886,7 @@ function wordPop(btn, tok) {
   let top = r.bottom + 8;
   if (top + h > innerHeight - 12) top = Math.max(12, r.top - h - 8);
   p.style.left = left + 'px'; p.style.top = top + 'px';
+  const first = p.querySelector('button, a'); if (first) first.focus({ preventScroll: true });
 }
 const wikiLink = (w) => `<a class="tool" href="https://it.wiktionary.org/wiki/${encodeURIComponent(E.plain(w).toLowerCase())}" target="_blank" rel="noopener noreferrer">${I.globe}Wikizionario</a>`;
 function openSheet(title, html) {
@@ -899,6 +898,7 @@ function openSheet(title, html) {
   bg.addEventListener('click', (ev) => { if (ev.target === bg) closeSheet(); });
   document.body.appendChild(bg);
   layers();
+  markWideTables(bg);
   setTimeout(() => { const b = $('#sheet .iconbtn'); if (b) b.focus(); }, 30);
 }
 function closeSheet() { const s = $('#sheet'); if (!s) return; s.remove(); layers(); restoreFocus(); }
@@ -941,8 +941,19 @@ function cellHtml(e, forms, kind) {
     return esc(w);
   })).join(' / ');
 }
+// tabelle più larghe dello schermo: prima colonna ferma (CSS), avviso di scorrimento e tabella raggiungibile da tastiera
+function markWideTables(root = document) {
+  $$('.tbl-wrap', root).forEach((w) => {
+    const wide = w.scrollWidth > w.clientWidth + 1;
+    w.classList.toggle('wide', wide);
+    if (wide) { w.tabIndex = 0; w.setAttribute('role', 'region'); w.setAttribute('aria-label', 'Tabella che scorre in orizzontale'); }
+    else { w.removeAttribute('tabindex'); w.removeAttribute('role'); w.removeAttribute('aria-label'); }
+    const h = w.previousElementSibling;
+    if (h && h.classList.contains('tbl-hint')) h.hidden = !wide;
+  });
+}
 function tblHtml(cols, rows, cap, laCols = []) {
-  return `<div class="tbl-wrap"><table class="para">${cap ? `<caption>${laSpans(esc(cap))}</caption>` : ''}<thead><tr>${cols.map((c) => `<th scope="col">${c}</th>`).join('')}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c, i) => (i === 0 ? `<th scope="row">${c}</th>` : `<td class="${laCols === 'all' || laCols.includes(i) ? 'la' : ''}" ${laCols === 'all' || laCols.includes(i) ? 'lang="la"' : ''}>${c}</td>`)).join('')}</tr>`).join('')}</tbody></table></div>`;
+  return `<p class="note tbl-hint" hidden>Scorri la tabella verso destra per vedere le altre colonne.</p><div class="tbl-wrap"><table class="para">${cap ? `<caption>${laSpans(esc(cap))}</caption>` : ''}<thead><tr>${cols.map((c) => `<th scope="col">${c}</th>`).join('')}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c, i) => (i === 0 ? `<th scope="row">${c}</th>` : `<td class="${laCols === 'all' || laCols.includes(i) ? 'la' : ''}" ${laCols === 'all' || laCols.includes(i) ? 'lang="la"' : ''}>${c}</td>`)).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
 const headCell = (e) => `<span class="la" lang="la">${esc(headOf(e))}</span>`;
 function declTable(uids, cap, num, cases) {
@@ -1078,6 +1089,7 @@ function render() {
     <aside class="side" aria-label="I tuoi progressi">${sidePanel()}</aside></div>
     <nav class="tabs" aria-label="Sezioni">${NAV.map(([v, ic, it]) => `<button data-act="tab" data-v="${v}" ${cur === v ? 'aria-current="page"' : ''}>${ic}<span>${it}</span></button>`).join('')}</nav>`;
   if (VIEW === 'words') bindWords();
+  markWideTables($('#app'));
   requestAnimationFrame(updateJump);
 }
 function ringSvg(p, label) {
@@ -1174,7 +1186,7 @@ function viewGym() {
       ${row('methodSheet', '', I.method, 'Il metodo', 'Otto passi per tradurre una frase')}</ul></div></section>`;
 }
 function viewLibrary() {
-  let h = `<header class="page-head"><h1>Teoria</h1><p class="lede">Gli argomenti del biennio. Le tabelle dei paradigmi le genera il motore morfologico: niente errori di stampa.</p></header>
+  let h = `<header class="page-head"><h1>Teoria</h1><p class="lede">Gli argomenti del biennio. Le tabelle dei paradigmi le genera il motore morfologico a partire dal lessico.</p></header>
     <div class="card flush"><ul class="list"><li><button class="rowbtn" data-act="methodSheet"><span class="ico">${I.method}</span><span class="txt"><b>Il metodo per tradurre</b><span>Otto passi per non perdersi in una frase</span></span>${I.chev}</button></li></ul></div>`;
   for (const [gid, gdef] of Object.entries(GROUPS)) {
     const list = TOPICS.filter((t) => t.group === gid);
@@ -1347,6 +1359,18 @@ function codeSheet(mode) {
     <div class="field"><label for="codeIn">Inserisci un codice</label><textarea id="codeIn" class="typed" rows="3" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Per esempio 1A2B-C3D4-…"></textarea><p class="note codemsg" id="codeMsg" role="status"></p></div>
     <div class="btns"><button class="btn" data-act="restoreCode">Ripristina dal codice</button><button class="btn ghost" data-act="import">Da file</button></div>`);
 }
+// una copia su file è valida se ha la forma dello stato di Verto: altrimenti si spiega che cosa non va e non si tocca nulla
+function backupError(d) {
+  const bad = 'Il file non è una copia di Verto valida: i tuoi progressi non sono stati toccati.';
+  if (!d || typeof d !== 'object' || d.v !== 2 || !d.course || typeof d.course !== 'object') return 'Il file non è una copia di Verto.';
+  const num = (x) => typeof x === 'number' && isFinite(x) && x >= 0;
+  if (!num(d.course.unlocked) || d.course.unlocked >= FLAT.length) return bad;
+  if (d.course.stars && (typeof d.course.stars !== 'object' || Object.values(d.course.stars).some((s) => ![1, 2, 3].includes(s)))) return bad;
+  if (d.xp != null && !num(d.xp)) return bad;
+  for (const k of ['settings', 'stats', 'vocab', 'days', 'badges', 'prac']) if (d[k] != null && (typeof d[k] !== 'object' || Array.isArray(d[k]))) return bad;
+  for (const k of ['mistakes', 'recent', 'genSaved', 'topics']) if (d[k] != null && !Array.isArray(d[k])) return bad;
+  return '';
+}
 function applyRestore(part) {
   S = merge(Object.assign({}, part, { onboarded: true, v: 2 }));
   S.backupAt = Date.now();
@@ -1400,7 +1424,7 @@ function drawOnb() {
       <button class="btn big block" data-act="onbNext">Cominciamo</button>
       <button class="linkbtn" data-act="restoreSheet">Hai già usato Verto? Ripristina i progressi</button>`;
   } else if (onb.step === 1) {
-    h += say('Fin dove sei arrivato in classe? Apro le unità che hai già studiato; le altre si aprono facendo le lezioni. Potrai cambiarlo dal profilo, anche tornando indietro.', 'think', 76) + placementList(onb.place, 'onbPlace') + `<button class="btn big block" data-act="onbNext">Avanti</button>`;
+    h += say('Fin dove sei arrivato in classe? Apro le unità che hai già studiato; le altre si aprono facendo le lezioni. Potrai cambiarlo dal profilo, anche tornando indietro.', 'think', 76) + placementList(onb.place, 'onbPlace') + `<div class="onb-foot"><button class="btn big block" data-act="onbNext">Avanti</button></div>`;
   } else {
     h += say('Ultime due scelte. Potrai cambiarle quando vuoi nel profilo.', 'happy', 76) + `<div class="card flush"><div class="setting wrap"><div class="grow"><b>Obiettivo giornaliero</b><span>Una lezione completa vale circa 100 XP</span></div><div class="seg four" role="group" aria-label="Obiettivo giornaliero">${[[30, 'Calmo'], [50, 'Normale'], [80, 'Serio'], [120, 'Intenso']].map(([g, l]) => `<button data-act="onbGoal" data-v="${g}" aria-pressed="${onb.goal === g}">${l}</button>`).join('')}</div></div>
       <div class="setting"><div class="grow"><b>Mostra le quantità</b><span>Facoltative: le vocali lunghe segnate con il trattino (rosā, amāre). Aiutano a leggere e a distinguere le forme.</span></div><label class="switch"><input type="checkbox" id="onbQuant" ${onb.quant ? 'checked' : ''} aria-label="Mostra le quantità"><i></i></label></div></div>
@@ -1464,7 +1488,7 @@ const ACT = {
   pick: (el) => pickOption(+el.dataset.k),
   mL: (el) => { const c = SES.cur; if (c.answered || el.disabled) return; $$('[data-act="mL"]').forEach((b) => { b.classList.remove('sel'); b.setAttribute('aria-pressed', 'false'); }); el.classList.add('sel'); el.setAttribute('aria-pressed', 'true'); c.selL = +el.dataset.i; sfx.tap(); matchStep(); },
   mR: (el) => { const c = SES.cur; if (c.answered || el.disabled) return; $$('[data-act="mR"]').forEach((b) => { b.classList.remove('sel'); b.setAttribute('aria-pressed', 'false'); }); el.classList.add('sel'); el.setAttribute('aria-pressed', 'true'); c.selR = +el.dataset.i; sfx.tap(); matchStep(); },
-  self: (el) => { const c = SES.cur; const d = c.selfData; c.answered = false; if (el.dataset.v === '1' && c.it.s) c.it.s.it.push(d.ans); finalize({ ok: el.dataset.v === '1', sol: d.sol, given: d.ans, typed: true, self: true }); },
+  self: (el) => { const c = SES.cur; const d = c.selfData; c.answered = false; if (el.dataset.v === '1' && c.it.s) c.it.s.it.push(d.ans); finalize({ ok: el.dataset.v === '1', sol: d.sol, given: d.ans, typed: true, self: true, note: el.dataset.v === '1' ? 'L’hai giudicata tu: se hai dubbi, chiedi all’insegnante.' : '' }); },
   toggleInput: (el) => { const c = SES.cur; if (c.answered) return; c.inputMode = c.inputMode === 'tiles' ? 'keys' : 'tiles'; c.chosen = []; $('#ansWrap').innerHTML = answerArea(c.it); el.outerHTML = inputToggle(); refreshAnswer(); const t = $('#typed'); if (t) t.focus({ preventScroll: true }); },
   macron: (el) => { const t = $('#typed'); if (!t || t.readOnly) return; const a = t.selectionStart ?? t.value.length; const before = t.value.slice(0, a); const last = before.slice(-1); const base = { 'ā': 'a', 'ē': 'e', 'ī': 'i', 'ō': 'o', 'ū': 'u' }[el.dataset.v]; const repl = last.toLowerCase() === base ? (last === base ? el.dataset.v : el.dataset.v.toUpperCase()) : null; t.value = repl ? before.slice(0, -1) + repl + t.value.slice(a) : before + el.dataset.v + t.value.slice(a); const p = repl ? a : a + 1; t.setSelectionRange(p, p); t.focus(); const b = $('#checkBtn'); if (b) b.disabled = !t.value.trim(); },
   word: (el) => { const it = SES && SES.cur && SES.cur.it; const s = it && it.s; if (!s) return; const tok = (s.tokens || [])[+el.dataset.i]; if (tok) wordPop(el, tok); },
@@ -1472,7 +1496,7 @@ const ACT = {
   speakSent: () => speak(SES.cur.it.s.la),
   speakForm: () => speak(SES.cur.it.form || SES.cur.it.word),
   speakText: (el) => speak(el.dataset.w),
-  method: (el) => { const on = el.getAttribute('aria-pressed') !== 'true'; el.setAttribute('aria-pressed', on); $$('#ovBody .w.vb').forEach((w) => w.classList.toggle('verb', on)); $('#aux').innerHTML = on ? say(`I verbi sono evidenziati: tanti verbi, tante proposizioni. Poi cerca il soggetto al nominativo e l’oggetto all’accusativo. <button class="tool" data-act="methodSheet">${I.method}Tutti i passi</button>`, 'think', 56) : ''; },
+  method: (el) => { const on = el.getAttribute('aria-pressed') !== 'true'; el.setAttribute('aria-pressed', on); $$('#ovBody .w.vb').forEach((w) => w.classList.toggle('verb', on)); $('#aux').innerHTML = on ? say(`I verbi di modo finito sono evidenziati: di solito ciascuno ha la sua proposizione.${sel().has('v_inf') || sel().has('v_part') ? ' Attento anche a infiniti e participi: possono formare proposizioni implicite.' : ''} Poi cerca il soggetto al nominativo e l’oggetto all’accusativo. <button class="tool" data-act="methodSheet">${I.method}Tutti i passi</button>`, 'think', 56) : ''; },
   methodSheet: () => methodSheet(),
   hint: () => hint(),
   theory: (el) => theorySheet(el.dataset.t),
@@ -1510,7 +1534,7 @@ const ACT = {
     if (S.onboarded && (S.xp || S.stats.lessons)) { closeSheet(); askConfirm('Sostituire i progressi di questo dispositivo con quelli del codice?', 'Ripristina', go); } else go();
   },
   export: () => { const blob = new Blob([JSON.stringify(S)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'verto-progressi-' + dayKey() + '.json'; S.backupAt = Date.now(); save(); document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); toast('Copia scaricata: conservala in un posto sicuro.'); },
-  import: () => { const i = document.createElement('input'); i.type = 'file'; i.accept = 'application/json,.json'; i.onchange = () => { const f = i.files[0]; if (!f) return; f.text().then((t) => { try { const d = JSON.parse(t); if (d && d.v === 2 && d.course) applyRestore(d); else toast('Il file non è una copia di Verto.'); } catch (e) { toast('Il file non è una copia di Verto.'); } }); }; i.click(); },
+  import: () => { const i = document.createElement('input'); i.type = 'file'; i.accept = 'application/json,.json'; i.onchange = () => { const f = i.files[0]; if (!f) return; f.text().then((t) => { let d = null; try { d = JSON.parse(t); } catch (e) { /* non è JSON */ } const err = backupError(d); if (err) toast(err); else applyRestore(d); }); }; i.click(); },
   reset: () => askConfirm('Cancellare tutti i progressi da questo dispositivo?', 'Cancella', () => { try { localStorage.removeItem(KEY); } catch (e) { /* ignora */ } S = DEFAULT(); onb = null; applyTheme(); render(); }, true, 'sad'),
   search: () => searchForm(),
   vocabDrill: () => startVocabDrill(),
@@ -1567,7 +1591,7 @@ document.addEventListener('keydown', (ev) => {
   }
 });
 document.addEventListener('input', (ev) => { if (ev.target.id === 'wq') { WF.q = ev.target.value.trim(); updateWordList(); return; } if (ev.target.id === 'typed') { const b = $('#checkBtn'); if (b) b.disabled = !ev.target.value.trim(); } });
-window.addEventListener('resize', closePop);
+window.addEventListener('resize', () => { closePop(); markWideTables(); });
 window.addEventListener('scroll', () => { closePop(); updateJump(); }, { passive: true });
 function updateJump() {
   const j = $('#jump'), n = $('.stone.current');
@@ -1609,7 +1633,7 @@ function boot() {
   if (SITE && 'serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 // per la verifica automatica nel browser
-window.VertoApp = { S: () => S, ses: () => SES, cur: () => SES && SES.cur, startLesson, startPractice, FLAT, render, set: (o) => { Object.assign(S, o); save(); render(); }, setVIEW: (v) => { VIEW = v; render(); } };
+window.VertoApp = { S: () => S, ses: () => SES, cur: () => SES && SES.cur, show: (i) => { if (SES) { SES.i = i; renderItem(); } }, startLesson, startPractice, FLAT, render, set: (o) => { Object.assign(S, o); save(); render(); }, setVIEW: (v) => { VIEW = v; render(); } };
 // prima si mostra la schermata di avvio, poi si prepara il lessico (qualche centinaio di millisecondi su un telefono)
 // in una scheda in secondo piano il primo disegno non arriva: si parte comunque dopo un attimo
 let booted = false;

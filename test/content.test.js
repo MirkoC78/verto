@@ -7,7 +7,7 @@ const { TOPICS, METHOD } = require('../src/topics.js');
 const errors = [];
 let words = 0, tables = 0, examples = 0;
 // parole citate come esempio di grafia, fuori dal lessico di base
-const EXTRA = new Set(['kalendae', 'lyra', 'zona', 'hora', 'iam', 'fruor', 'fungor', 'potior', 'vescor', 'ullus', 'simul', 'res', 'gestae', 'oriente', 'improbus', 'itum']);
+const EXTRA = new Set(['kalendae', 'lyra', 'zona', 'hora', 'iam', 'fruor', 'fungor', 'potior', 'vescor', 'ullus', 'simul', 'res', 'gestae', 'oriente', 'improbus', 'itum', 'vergilius', 'vergili']);
 const laOf = (html) => [...String(html).matchAll(/<span class="la">(.*?)<\/span>/g)].map((m) => m[1].replace(/<[^>]+>/g, ''));
 const ORDER = TOPICS.map((t) => t.id);
 for (const t of TOPICS) {

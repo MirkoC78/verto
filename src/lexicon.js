@@ -94,7 +94,7 @@ n|populus|populī|m|popolo
 n|deus|deī|m|dio|x=dī:nom:p;diī:nom:p;dīs:dat:p;dīs:abl:p;deus:voc:s,drop=dee
 n|vir|virī|m|uomo
 n|līberī|līberōrum|m|figli|pl
-n|fīlius|fīliī|m|figlio
+n|fīlius|fīliī|m|figlio|vocI
 n|lēgātus|lēgātī|m|ambasciatore, luogotenente
 n|animus|animī|m|animo, coraggio
 n|hortus|hortī|m|orto, giardino

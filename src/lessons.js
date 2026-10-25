@@ -129,6 +129,9 @@
   function focusForms(e, sc, noVoc) { const all = formsIn(e, sc, noVoc); const f = all.filter((x) => x.req.includes(sc.focus)); return f.length >= 1 ? f : all; }
   const PREF = ['nominativo', 'accusativo', 'genitivo', 'dativo', 'ablativo', 'vocativo'];
   const prefRank = (d) => { const i = PREF.findIndex((p) => d.includes(p)); return i < 0 ? 0 : i; };
+  const sameQ = (a, b) => String(a).normalize('NFC') === String(b).normalize('NFC');
+  // una forma per grafia: con le quantità attive l'opzione si mostra con la quantità della forma scelta
+  const byPlain = (forms) => { const m = new Map(); for (const x of forms) if (!m.has(x.f)) m.set(x.f, x); return [...m.values()]; };
   function buildAnalizza(sc) {
     const ents = scopeEntries(sc, KINDS_FORMS);
     for (let k = 0; k < 30; k++) {
@@ -138,12 +141,14 @@
       if (!forms.length) continue;
       const f = pick(forms);
       const inScope = formsIn(e, sc);
+      // letture valide senza quantità (stessa grafia) e con le quantità (stessa forma con i segni di lunga)
       const valid = uniq(inScope.filter((x) => x.f === f.f).map((x) => x.d));
-      const best = valid.slice().sort((a, b) => prefRank(a) - prefRank(b))[0] || f.d;
+      const validQ = uniq(inScope.filter((x) => sameQ(x.q, f.q)).map((x) => x.d));
+      const best = validQ.slice().sort((a, b) => prefRank(a) - prefRank(b))[0] || f.d;
       const pool = uniq(inScope.map((x) => x.d).filter((d) => !valid.includes(d)));
       const dis = shuffle(pool).slice(0, 3);
       if (dis.length < 1) continue;
-      return { type: 'analizza', uid: e.uid, form: f.f, q: f.q, correct: best, valid, options: shuffle([best, ...dis]), topic: focusOfReq(f.req), key: f.key };
+      return { type: 'analizza', uid: e.uid, form: f.f, q: f.q, correct: best, valid, validQ, options: shuffle([best, ...dis]), topic: focusOfReq(f.req), key: f.key };
     }
     return null;
   }
@@ -173,9 +178,10 @@
       const deg = /^a:comp/.test((sc.keysSrc || '')) ? 'comp' : 'pos';
       const right = a.forms.find((f) => f.key === `a:${deg}:${nf.c}:${nf.n}:${n.g}` && sc.formOK(a, f.key));
       if (!right) continue;
-      const dis = shuffle(uniq(a.forms.filter((f) => f.key.startsWith(`a:${deg}:`) && f.c !== 'voc' && f.f !== right.f && sc.formOK(a, f.key)).map((f) => f.f))).slice(0, 3);
+      const dis = shuffle(byPlain(a.forms.filter((f) => f.key.startsWith(`a:${deg}:`) && f.c !== 'voc' && f.f !== right.f && sc.formOK(a, f.key)))).slice(0, 3);
       if (dis.length < 2) continue;
-      return { type: 'accorda', noun: { uid: n.uid, f: nf.f, q: nf.q, d: nf.d }, uid: a.uid, answer: right.f, aq: right.q, options: shuffle([right.f, ...dis]), topic: a.t, key: right.key };
+      const opts = shuffle([right, ...dis]);
+      return { type: 'accorda', noun: { uid: n.uid, f: nf.f, q: nf.q, d: nf.d }, uid: a.uid, answer: right.f, aq: right.q, options: opts.map((o) => o.f), optionsQ: opts.map((o) => o.q), topic: a.t, key: right.key };
     }
     return null;
   }
@@ -203,9 +209,10 @@
     const cand = toks.map((t, i) => ({ t, i })).filter(({ t }) => t && ['n', 'v', 'a', 'p'].includes((entryOf(t.uid) || {}).k));
     for (const { t, i } of shuffle(cand)) {
       const e = entryOf(t.uid);
-      const others = shuffle(uniq(formsIn(e, sc).map((x) => x.f).filter((f) => E.norm(f) !== E.norm(t.w) && !f.includes(' ')))).slice(0, 3);
+      const others = shuffle(byPlain(formsIn(e, sc).filter((x) => E.norm(x.f) !== E.norm(t.w) && !x.f.includes(' ')))).slice(0, 3);
       if (others.length < 2) continue;
-      return { type: 'completa', s, idx: i, answer: t.w, options: shuffle([t.w.toLowerCase() === t.w ? t.w : t.w, ...others]), topic: s.focus };
+      const opts = shuffle([{ f: t.w, q: t.q }, ...others.map((x) => ({ f: x.f, q: x.q }))]);
+      return { type: 'completa', s, idx: i, answer: t.w, aq: t.q, options: opts.map((o) => o.f), optionsQ: opts.map((o) => o.q), topic: s.focus };
     }
     return null;
   }
@@ -304,9 +311,10 @@
     if (forms.length < 2) return null;
     const f = pick(forms);
     const valid = uniq(forms.filter((x) => x.f === f.f).map((x) => x.d));
+    const validQ = uniq(forms.filter((x) => sameQ(x.q, f.q)).map((x) => x.d));
     const dis = shuffle(uniq(forms.map((x) => x.d).filter((d) => !valid.includes(d)))).slice(0, 2);
     if (dis.length < 1) return null;
-    return { type: 'analizza', quiz: true, uid: e.uid, form: f.f, q: f.q, correct: f.d, valid, options: shuffle([f.d, ...dis]), topic: sc.focus, key: f.key };
+    return { type: 'analizza', quiz: true, uid: e.uid, form: f.f, q: f.q, correct: f.d, valid, validQ, options: shuffle([f.d, ...dis]), topic: sc.focus, key: f.key };
   }
   const TABLE_CARD = (c) => !!(c.decl || c.conj || c.adj || c.pron || c.part);
 

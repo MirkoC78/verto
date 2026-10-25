@@ -102,7 +102,8 @@
           if (d === 2 && g !== 'n') {
             if (i === 4) {
               if (!ends(e.nom, 'us')) f = e.nom;
-              else if (ends(e.nom, 'ius') && !e.adjLike) f = e.nom.slice(0, -3) + 'ī';
+              // vocativo in -ī solo dove il lessico lo dichiara (fīlius e i nomi propri latini in -ius); gli altri in -ie: socie, nūntie
+              else if (ends(e.nom, 'ius') && e.vocI) f = e.nom.slice(0, -3) + 'ī';
             }
           }
           if (d === 1 && i === 4 && !ends(e.nom, 'a')) f = stem + 'a';
@@ -696,7 +697,7 @@
       try {
         if (k === 'n') {
           const fl = parseFlags(f[5]);
-          e = { k: 'n', nom: f[1], gen: f[2], g: f[3], it: f[4], sg: !!fl.sg, pl: !!fl.pl, gp: fl.gp, ablI: !!fl.ablI, abus: !!fl.abus, loc: fl.loc, only: !!fl.only, drop: fl.drop ? fl.drop.split(';') : [], prop: /^[A-Z]/.test(plain(f[1])) };
+          e = { k: 'n', nom: f[1], gen: f[2], g: f[3], it: f[4], sg: !!fl.sg, vocI: !!fl.vocI, pl: !!fl.pl, gp: fl.gp, ablI: !!fl.ablI, abus: !!fl.abus, loc: fl.loc, only: !!fl.only, drop: fl.drop ? fl.drop.split(';') : [], prop: /^[A-Z]/.test(plain(f[1])) };
           if (fl.x) e.extra = fl.x.split(';').map((s) => { const [ff, c, n] = s.split(':'); return { f: ff, c, n }; });
           const r = nounForms(e);
           e.decl = r.info.d;

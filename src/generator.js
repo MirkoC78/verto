@@ -15,47 +15,56 @@
 
   /* ---------- Lessico ---------- */
   const lex = (k, head, filt) => E.LEX.find((x) => x.k === k && x.head === head && (!filt || x.lemma.includes(filt)));
-  const NOUNS = [], ADJS = [], VERBS = [];
+  // i repertori del generatore si costruiscono solo a lessico caricato (nel browser il lessico si carica dopo la
+  // schermata d'avvio); init è idempotente e generate la chiama da sé
+  const NOUNS = [], ADJS = [], VERBS = [], MODALS = [], SUMCOMP = [], SAYERS = [];
   const byHead = {};
-  let nid = 0;
-  for (let line of D.NOUNS.split('\n')) {
-    line = line.trim(); if (!line) continue;
-    const [head, tags, it, opt] = line.split('|');
-    const e = lex('n', head);
-    if (!e) { console.warn('Generatore: nome mancante', head); continue; }
-    const opts = {};
-    (opt || '').split(',').filter(Boolean).forEach((kv) => { const i = kv.indexOf('='); if (i < 0) opts[kv] = true; else opts[kv.slice(0, i)] = kv.slice(i + 1); });
-    const variants = it.split(',').map((v) => {
-      const [forms, g, num] = v.split(':');
-      const [sg, pl] = forms.split('/');
-      return num === 'p' ? { sg: null, pl: sg, g, num: 'p' } : num === 's' ? { sg, pl: null, g, num: 's' } : { sg, pl: pl || sg, g };
-    });
-    const N = { id: nid++, head, e, t: e.t, tags: new Set(tags.split(' ')), it: variants, opts, g: e.g || (tags.includes(' f') ? 'f' : 'm') };
-    N.proper = N.tags.has('N') || N.tags.has('G');
-    if (N.proper) N.g = N.tags.has('f') ? 'f' : 'm';
-    N.latSg = !e.pl; N.latPl = !e.sg && !opts.sg && !N.proper;
-    NOUNS.push(N); byHead[head] = N;
+  let SUM = null, MULTUS = null, PRON = {}, DOMUS = null, ready = false;
+  function init() {
+    if (ready) return true;
+    if (!E.LEX.length) return false;
+    ready = true;
+    let nid = 0;
+    for (let line of D.NOUNS.split('\n')) {
+      line = line.trim(); if (!line) continue;
+      const [head, tags, it, opt] = line.split('|');
+      const e = lex('n', head);
+      if (!e) { console.warn('Generatore: nome mancante', head); continue; }
+      const opts = {};
+      (opt || '').split(',').filter(Boolean).forEach((kv) => { const i = kv.indexOf('='); if (i < 0) opts[kv] = true; else opts[kv.slice(0, i)] = kv.slice(i + 1); });
+      const variants = it.split(',').map((v) => {
+        const [forms, g, num] = v.split(':');
+        const [sg, pl] = forms.split('/');
+        return num === 'p' ? { sg: null, pl: sg, g, num: 'p' } : num === 's' ? { sg, pl: null, g, num: 's' } : { sg, pl: pl || sg, g };
+      });
+      const N = { id: nid++, head, e, t: e.t, tags: new Set(tags.split(' ')), it: variants, opts, g: e.g || (tags.includes(' f') ? 'f' : 'm') };
+      N.proper = N.tags.has('N') || N.tags.has('G');
+      if (N.proper) N.g = N.tags.has('f') ? 'f' : 'm';
+      N.latSg = !e.pl; N.latPl = !e.sg && !opts.sg && !N.proper;
+      NOUNS.push(N); byHead[head] = N;
+    }
+    for (let line of D.ADJS.split('\n')) {
+      line = line.trim(); if (!line) continue;
+      const [head, it, spec] = line.split('|');
+      const e = lex('a', head);
+      if (!e) { console.warn('Generatore: aggettivo mancante', head); continue; }
+      const alts = it.split(',').map((a) => { const pre = /\+$/.test(a); const f = a.replace(/\+$/, ''); return { forms: IT.adjForms(f.replace(/\//g, '|')), pre, base: f.split('/')[0] }; });
+      ADJS.push({ head, e, t: e.t, it: alts, spec, comp: !e.nocomp && !['Romanus', 'Graecus', 'Latinus', 'Troianus'].includes(head) });
+    }
+    for (const v of D.VERBS) {
+      const e = lex('v', v.la, v.f);
+      if (!e) { console.warn('Generatore: verbo mancante', v.la); continue; }
+      VERBS.push({ ...v, e, its: v.it.map(parseIt) });
+    }
+    MODALS.push(...D.MODALS.map((m) => ({ ...m, e: lex('v', m.la, m.f) })).filter((m) => m.e));
+    SUMCOMP.push(...D.SUMCOMP.map((m) => ({ ...m, e: lex('v', m.la), its: m.it.map(parseIt) })).filter((m) => m.e));
+    SAYERS.push(...D.SAYERS.map((m) => ({ ...m, e: lex('v', m.la) })).filter((m) => m.e));
+    SUM = lex('v', 'sum');
+    MULTUS = lex('a', 'multus');
+    PRON = Object.fromEntries(['ego', 'tu', 'meus', 'tuus', 'suus', 'noster', 'vester', 'hic', 'ille', 'qui'].map((h) => [h, lex('p', h)]));
+    DOMUS = lex('n', 'domus');
+    return true;
   }
-  for (let line of D.ADJS.split('\n')) {
-    line = line.trim(); if (!line) continue;
-    const [head, it, spec] = line.split('|');
-    const e = lex('a', head);
-    if (!e) { console.warn('Generatore: aggettivo mancante', head); continue; }
-    const alts = it.split(',').map((a) => { const pre = /\+$/.test(a); const f = a.replace(/\+$/, ''); return { forms: IT.adjForms(f.replace(/\//g, '|')), pre, base: f.split('/')[0] }; });
-    ADJS.push({ head, e, t: e.t, it: alts, spec, comp: !e.nocomp && !['Romanus', 'Graecus', 'Latinus', 'Troianus'].includes(head) });
-  }
-  for (const v of D.VERBS) {
-    const e = lex('v', v.la, v.f);
-    if (!e) { console.warn('Generatore: verbo mancante', v.la); continue; }
-    VERBS.push({ ...v, e, its: v.it.map(parseIt) });
-  }
-  const MODALS = D.MODALS.map((m) => ({ ...m, e: lex('v', m.la, m.f) })).filter((m) => m.e);
-  const SUMCOMP = D.SUMCOMP.map((m) => ({ ...m, e: lex('v', m.la), its: m.it.map(parseIt) })).filter((m) => m.e);
-  const SAYERS = D.SAYERS.map((m) => ({ ...m, e: lex('v', m.la) })).filter((m) => m.e);
-  const SUM = lex('v', 'sum');
-  const MULTUS = lex('a', 'multus');
-  const PRON = Object.fromEntries(['ego', 'tu', 'meus', 'tuus', 'suus', 'noster', 'vester', 'hic', 'ille', 'qui'].map((h) => [h, lex('p', h)]));
-  const DOMUS = lex('n', 'domus');
   const ADV = D.ADVS.map(([la, it, tenses, t, pos, verbs]) => ({ la, it, tenses: tenses.split(' '), t, pos, verbs: verbs ? verbs.split(' ') : null }));
 
   function parseIt(s) {
@@ -1241,6 +1250,7 @@
   };
   // o: { avoid, lex (Set di uid), maxNew, newOK(e), formOK(e, key), tenses, nums(N), infRel, lite, tries }
   function generate(selected, focus, o = {}) {
+    if (!init()) return null;
     const T = new Set(selected);
     if (!T.has('v_pres')) return null;
     const topics = [...T];
@@ -1273,6 +1283,6 @@
 
   // generatore pseudo-casuale sostituibile (per i test riproducibili)
   function seed(fn) { rand = fn || Math.random; }
-  root.VertoGen = { seed, generate, NOUNS, ADJS, VERBS, MODALS, SUMCOMP, SAYERS, ADV, _internal: { bBasic, bCoord, bCopula, bComp, bImper, bModal, bSumComp, bSub, bRel, bCum, bUt, bInf, bAbl } };
+  root.VertoGen = { seed, init, generate, NOUNS, ADJS, VERBS, MODALS, SUMCOMP, SAYERS, ADV, _internal: { bBasic, bCoord, bCopula, bComp, bImper, bModal, bSumComp, bSub, bRel, bCum, bUt, bInf, bAbl } };
   if (typeof module !== 'undefined') module.exports = root.VertoGen;
 })(typeof window !== 'undefined' ? window : globalThis);

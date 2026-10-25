@@ -25,7 +25,7 @@ const fontCSS = FONTS.map(([fam, style, w, file, range]) => {
 
 // 2. Script nell'ordine di dipendenza
 const MODULES = ['src/engine.js', 'src/lexicon.js', 'src/sentence.js', 'src/reading.js', 'src/italian.js', 'src/semantic.js', 'src/generator.js',
-  'src/course.js', 'src/lessons.js', 'src/topics.js', 'src/bank.js', 'src/savecode.js', 'src/guide.js', 'src/app.js'];
+  'src/course.js', 'src/lessons.js', 'src/topics.js', 'src/bank.js', 'src/savecode.js', 'src/check.js', 'src/guide.js', 'src/app.js'];
 const code = MODULES.map((m) => `/* ---- ${m} ---- */\n` + r(m)).join('\n;\n');
 const css = r('src/app.css');
 const ASSETS_DIR = path.join(ROOT, 'assets');

@@ -43,8 +43,8 @@ const UNITS = [
       { say: 'Nel profilo puoi far comparire le quantità in tutte le frasi. Sono facoltative: se le scrivi sbagliate te lo segnalo, ma non conta come errore.' }] },
   { id: 'alf4', title: 'Dove cade l’accento', sub: 'la legge della penultima', mix: ['accento', 'accento', 'sillabe', 'accento', 'quantita', 'accento', 'abbina', 'accento'], lemmas: ['agricola', 'victoria', 'sapientia', 'laetitia', 'magister', 'discipulus', 'periculum', 'imperator'],
     teach: [
-      { say: 'Il latino non ha parole tronche: l’accento non cade mai sull’ultima sillaba. Per le altre basta una regola.' },
-      { tbl: { c: ['Parola', 'Accento', 'Esempio'], r: [['di due sillabe', 'sulla prima', `${la('rosa')} «ròsa»`], ['di tre o più sillabe, penultima lunga', 'sulla penultima', `${la('victōria')} «victòria»`], ['di tre o più sillabe, penultima breve', 'sulla terzultima', `${la('agricola')} «agrìcola»`]] } },
+      { say: 'In latino l’accento quasi mai cade sull’ultima sillaba: per le parole che incontrerai basta una regola.' },
+      { tbl: { c: ['Parola', 'Accento', 'Esempio'], r: [['di due sillabe', 'sulla prima', `${la('rosa')} «ròsa»`], ['di tre o più sillabe, penultima lunga', 'sulla penultima', `${la('fortūna')} «fortùna»`], ['di tre o più sillabe, penultima breve', 'sulla terzultima', `${la('agricola')} «agrìcola»`]] } },
       { p: `È la <b>legge della penultima</b>: guarda la penultima sillaba. ${la('magister')} ha la penultima chiusa da due consonanti (ma-gis-ter): è lunga, e l’accento va lì: «magìster».` },
       { say: 'Con -que, «e», l’accento si sposta sulla sillaba prima: puellaque si legge «puellàque».' }] },
   { id: 'alf5', title: 'Prova d’unità', sub: 'lettere, quantità e accento', mix: ['lettura', 'accento', 'suono', 'quantita', 'lettura', 'accento', 'sillabe', 'lettura', 'accento', 'abbina'], test: true },
@@ -153,7 +153,7 @@ const UNITS = [
       { ex: ['Puer donum habet.', 'Il fanciullo ha un dono.'] }] },
   { id: 'n2d', title: 'Vocativo e nomi speciali', sub: 'domine, fīlī · deus', lemmas: ['filius', 'deus', 'socius', 'gladius', 'nuntius', 'legatus', 'Romani', 'Galli', 'arma', 'castra', 'praemium', 'frumentum'], mix: NOM,
     teach: [
-      { say: 'Il vocativo dei nomi in -us esce in -e; quello dei nomi in -ius in -ī. Deus ha forme tutte sue.' },
+      { say: 'Il vocativo dei nomi in -us esce in -e, anche in -ius: socie, nūntie. Fanno eccezione fīlius (fīlī) e i nomi propri latini in -ius (Vergilī). Deus ha forme tutte sue.' },
       { decl: ['dominus', 'filius'], num: 's' },
       { p: `${la('Arma, armōrum')} («armi») e ${la('castra, castrōrum')} («accampamento») si usano solo al plurale.` },
       { ex: ['Domine, servi aquam non habent.', 'Padrone, i servi non hanno acqua.'] }] },

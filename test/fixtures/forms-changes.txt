@@ -1,0 +1,7 @@
+# Forme di Verto 1 corrette di proposito (non sono perdite).
+# VERTO-004: il vocativo in -ī vale per fīlius e per i nomi propri latini in -ius, non per i nomi comuni
+# (Allen & Greenough §49c); Ascanius è un nome di origine greca: vocativo in -ie.
+gladius n:voc:s=gladi|n2
+nuntius n:voc:s=nunti|n2
+socius n:voc:s=soci|n2
+Ascanius n:voc:s=Ascani|n2

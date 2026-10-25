@@ -20,7 +20,7 @@ const TOPICS = [
     { tbl: {"c":["Lettera o gruppo","Pronuncia scolastica","Esempio"], r: [["c, g","dolci davanti a e, i, ae, oe; dure altrove","<span class=\"la\">Cicerō</span> «Cìcero», <span class=\"la\">causa</span> «càusa»"],["ae, oe","e","<span class=\"la\">Caesar</span> «Cèsar», <span class=\"la\">proelium</span> «prèlium»"],["au","au","<span class=\"la\">aurum</span> «àurum»"],["ch, ph, th","c dura, f, t","<span class=\"la\">schola</span> «scòla», <span class=\"la\">Athēnae</span> «Atène»"],["gn","come in «gnomo»","<span class=\"la\">rēgnum</span> «règnum»"],["ti + vocale","zi (ma non dopo s, t, x)","<span class=\"la\">grātia</span> «gràzia»"],["h","muta","<span class=\"la\">hōra</span> «òra»"],["qu, gu + vocale","come in «acqua», «lingua»","<span class=\"la\">aqua</span>, <span class=\"la\">lingua</span>"],["x","cs","<span class=\"la\">dux</span> «ducs»"],["y","i",""],["j","i (davanti a vocale)","<span class=\"la\">iam</span>"]]} },
     { p: "Ogni vocale può essere <b>lunga</b> o <b>breve</b>: i dizionari segnano le lunghe con un trattino (ā ē ī ō ū). Una <b>sillaba</b> è lunga se ha una vocale lunga o un dittongo, oppure se la sua vocale è seguita da due consonanti (anche x e z)." },
     { tbl: {"c":["Parola","Accento","Esempio"], r: [["di due sillabe","sulla prima","<span class=\"la\">rosa</span> «ròsa»"],["di tre o più sillabe, penultima lunga","sulla penultima","<span class=\"la\">fortūna</span> «fortùna», <span class=\"la\">magister</span> «magìster»"],["di tre o più sillabe, penultima breve","sulla terzultima","<span class=\"la\">dominus</span> «dòminus», <span class=\"la\">agricola</span> «agrìcola»"]]} },
-    { p: "È la <b>legge della penultima</b>. Il latino non ha parole tronche. Con le enclitiche (-que, -ne, -ve) l’accento cade sulla sillaba che le precede: «puellàque»." },
+    { p: "È la <b>legge della penultima</b>; le parole con l’accento sull’ultima sillaba sono rarissime. Con le enclitiche (-que, -ne, -ve) l’accento cade sulla sillaba che le precede: «puellàque»." },
   ],
   tip: "Quando leggi ad alta voce una parola nuova, contane le sillabe e guarda la penultima: è lei che decide l’accento.",
   trap: ["Muta + liquida (pr, tr, cl…) non allunga la sillaba: «tènebrae».","Una vocale davanti a un’altra vocale è di solito breve: «pàtria»."],
@@ -68,7 +68,7 @@ const TOPICS = [
   body: [
     { decl: ["dominus","puer","templum"] },
     { p: "<b>Regola dei neutri</b> (vale per tutte le declinazioni): nominativo, accusativo e vocativo sono uguali; al plurale escono in <span class=\"la\">-a</span>. Alcuni nomi in <span class=\"la\">-er</span> perdono la <i>e</i>: <span class=\"la\">ager, agri</span>; <span class=\"la\">magister, magistri</span>. Il tema si ricava sempre dal genitivo." },
-    { p: "Il vocativo dei nomi in <span class=\"la\">-us</span> esce in <span class=\"la\">-e</span> (<span class=\"la\">domine</span>), quello dei nomi in <span class=\"la\">-ius</span> in <span class=\"la\">-i</span> (<span class=\"la\">fili</span>). <span class=\"la\">Deus</span> ha forme particolari: <span class=\"la\">di, dis</span>." },
+    { p: "Il vocativo dei nomi in <span class=\"la\">-us</span> esce in <span class=\"la\">-e</span> (<span class=\"la\">domine</span>), anche nei nomi in <span class=\"la\">-ius</span> (<span class=\"la\">socius</span> → <span class=\"la\">socie</span>). Hanno il vocativo in <span class=\"la\">-i</span> solo <span class=\"la\">filius</span> (<span class=\"la\">fili</span>) e i nomi propri latini in <span class=\"la\">-ius</span> (<span class=\"la\">Vergilius</span> → <span class=\"la\">Vergili</span>). <span class=\"la\">Deus</span> ha forme particolari: <span class=\"la\">di, dis</span>." },
   ],
   tip: "Un neutro plurale in -a non è un femminile della prima declinazione: controlla il lemma sul dizionario.",
   trap: ["<span class=\"la\">-i</span> può essere genitivo singolare o nominativo plurale.","<span class=\"la\">-o</span> è dativo o ablativo singolare."],
@@ -171,7 +171,7 @@ const TOPICS = [
     { p: "Si declinano come i parisillabi della 3ª: <b>ablativo singolare in -i</b>, genitivo plurale in <span class=\"la\">-ium</span>, neutro plurale in <span class=\"la\">-ia</span>: <span class=\"la\">forti, fortium, fortia</span>." },
     { p: "Avverbi: <span class=\"la\">fortis → fortiter</span>, <span class=\"la\">acer → acriter</span>, <span class=\"la\">celer → celeriter</span>, <span class=\"la\">prudens → prudenter</span>. <span class=\"la\">Omnis</span> = «ogni» al singolare, «tutti» al plurale." },
   ],
-  tip: "Un aggettivo della 2ª classe può accompagnare nomi di qualsiasi declinazione: concorda solo nel caso, non nella desinenza.",
+  tip: "Un aggettivo della 2ª classe può accompagnare nomi di qualsiasi declinazione: concorda in genere, numero e caso, ma la desinenza può essere diversa.",
   trap: ["<span class=\"la\">acri</span> può essere dativo o ablativo singolare.","<span class=\"la\">omnia</span> è neutro plurale: «tutte le cose»."],
   ex: [["Omnes homines felices esse cupiunt.","Tutti gli uomini desiderano essere felici."]],
 },
@@ -326,7 +326,7 @@ const TOPICS = [
 
 const METHOD = [
   { h: 'Leggi tutta la frase', p: 'Prima di tradurre, leggi il periodo intero e osserva la punteggiatura: virgole e punti e virgola separano spesso le proposizioni.' },
-  { h: 'Trova i verbi', p: 'Individua i verbi di modo finito: tanti verbi, tante proposizioni. La principale è quella che non è introdotta da congiunzioni subordinanti o relativi.' },
+  { h: 'Trova i verbi', p: 'Individua i verbi di modo finito: di solito ciascuno regge una proposizione. Più avanti incontrerai anche infiniti e participi, che possono formare proposizioni implicite. La principale è quella che non è introdotta da congiunzioni subordinanti o relativi.' },
   { h: 'Analizza il predicato', p: 'Per il verbo principale stabilisci persona, numero, tempo, modo e diatesi. Ricorda di controllare se è un deponente.' },
   { h: 'Cerca il soggetto', p: 'Cerca un nominativo che concordi con il verbo. Se non c’è, il soggetto è sottinteso nella desinenza.' },
   { h: 'Cerca l’oggetto', p: 'Se il verbo è transitivo attivo, cerca l’accusativo: è il complemento oggetto.' },

@@ -45,6 +45,9 @@ Durante le verifiche il giocatore automatico ha trovato e fatto correggere difet
 le opzioni latine lunghe fuori schermo, i pulsanti verde e rosso illeggibili in scuro, il Tab che usciva dalla lezione, i punti troppo generosi
 rispetto agli obiettivi. Dettagli in `docs/critica-design.md` e `docs/accessibilita.md`.
 
+## Revisione esterna
+Una revisione indipendente (Codex, 25 ottobre) ha trovato quattro difetti che le prove non avevano visto: il generatore di frasi nuove non partiva nel browser, una traduzione con i ruoli invertiti veniva premiata, con le quantità attive un'analisi poteva premiare la lettura sbagliata, e il vocativo in -ī era esteso a tutti i nomi in -ius. Sono stati corretti, con regressioni in `test/review.test.js` e il giocatore automatico ora controlla anche gli avvisi della console, le frasi generate e le risposte scritte. Dettagli e proposte ancora da decidere in [revisione-codex.md](revisione-codex.md).
+
 ## Che cosa non è stato verificato
 - **iPhone e Android veri**: le prove sono in un browser Chromium con la larghezza del telefono. Restano da provare su un dispositivo: aree sicure
   (notch, barra Home), installazione dalla schermata Home, tastiera virtuale sopra il campo di risposta, vibrazione.
@@ -56,8 +59,9 @@ rispetto agli obiettivi. Dettagli in `docs/critica-design.md` e `docs/accessibil
 ## Limiti noti
 - Il generatore non trova una frase in circa il 2% delle combinazioni di argomenti molto ristrette: in quei casi si usa la banca.
 - Nelle frasi della banca, per le forme ambigue l'analisi mostra la lettura più probabile (il foglio dell'analisi lo dice).
-- Le traduzioni in italiano scritte a mano sono controllate con tolleranza; se una traduzione diversa non è riconosciuta, lo studente la giudica
-  da sé confrontandola con la soluzione (e quella risposta viene aggiunta alle accettate per la sessione).
+- Le traduzioni in italiano scritte a tastiera sono accettate da sole solo se coincidono con una prevista (salvo maiuscole, punteggiatura,
+  accenti e piccoli errori di battitura); le altre passano al confronto guidato, dove lo studente le giudica con una traccia. Il suo giudizio
+  non è una verifica del significato: una traduzione giusta ma non prevista richiede un momento di riflessione in più.
 - Il codice di salvataggio contiene percorso, stelle, punti, serie, insegne, impostazioni e nome; il ripasso degli errori e le scatole del lessico
   passano solo con la copia su file.
 - Le massime del giorno contengono 23 parole fuori dal lessico: sono sempre accompagnate dalla traduzione e da una nota.
