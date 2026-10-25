@@ -280,6 +280,33 @@ for (const [uid, key, want] of QUANT) {
   const got = e.forms.filter((x) => x.key === key).map((x) => x.q);
   if (!got.includes(want)) errors.push(`quantità di ${uid} ${key}: attesa «${want}», trovata «${got.join('/') || '—'}»`);
 }
+// paradigmi controllati: forme giuste e forme che il latino non ha (alius, celer, dīves, novus, faciō, nāscor, dō, orior)
+const PARA_OK = [
+  ['domus', 'n:gen:s', 'domūs'], ['domus', 'n:dat:s', 'domuī'], ['domus', 'n:abl:s', 'domō'], ['domus', 'n:gen:p', 'domuum'], ['domus', 'n:acc:p', 'domūs'],
+  ['alius', 'a:pos:gen:s:m', 'alīus'], ['alius', 'a:pos:dat:s:f', 'aliī'], ['alius', 'a:pos:nom:s:n', 'aliud'], ['celer', 'a:pos:gen:p:m', 'celerum'],
+  ['dives', 'a:pos:gen:p:m', 'dīvitum'], ['novus', 'a:sup:nom:s:m', 'novissimus'], ['facio', 'v:part:perf:nom:s:m', 'factus'],
+  ['nascor', 'v:part:fut:nom:s:m', 'nāscitūrus'], ['do', 'v:part:pres:nom:s:m', 'dāns'], ['do', 'v:part:pres:gen:s:m', 'dantis'],
+  ['orior', 'v:ind:pres:dep:1', 'oreris'], ['orior', 'v:ind:pres:dep:2', 'oritur'], ['orior', 'v:inf:pres:dep', 'orīrī'], ['locus', 'n:nom:p', 'loca'],
+];
+for (const [uid, key, want] of PARA_OK) {
+  checks++;
+  const e = E.BY_UID.get(uid);
+  const got = e ? e.forms.filter((x) => x.key === key).map((x) => x.q) : [];
+  if (!got.includes(want)) errors.push(`paradigma di ${uid} ${key}: attesa «${want}», trovata «${got.join('/') || '—'}»`);
+}
+const PARA_NO = [['dives', /^a:pos:(nom|acc|voc):p:n$/], ['pauper', /^a:pos:(nom|acc|voc):p:n$/], ['novus', /^a:comp:/],
+  ['Romanus', /^a:(comp|sup):/], ['Graecus', /^a:(comp|sup):/], ['Latinus', /^a:(comp|sup):/], ['facio', /^v:(ind|cong|inf):\w+:pass/]];
+for (const [uid, re] of PARA_NO) {
+  checks++;
+  const e = E.BY_UID.get(uid);
+  const bad = e ? e.forms.filter((x) => re.test(x.key)) : [];
+  if (!e) errors.push('paradigma: lemma mancante ' + uid);
+  else if (bad.length) errors.push(`${uid}: forme che il latino non ha: ${bad.slice(0, 4).map((x) => x.q).join(', ')}`);
+}
+const NON_LATIN = new Set(['aliīus', 'celerium', 'dīvita', 'paupera', 'novior', 'Rōmānior', 'facitur', 'faciēbātur', 'nātūrus', 'orīris', 'orītur', 'dans']);
+checks++;
+const nonLatin = E.LEX.flatMap((e) => e.forms.filter((x) => NON_LATIN.has(x.q)).map((x) => e.head + ' ' + x.q));
+if (nonLatin.length) errors.push('forme che il latino non ha: ' + nonLatin.slice(0, 8).join(', '));
 // ogni forma con le quantità, senza i segni, coincide con la forma scolastica
 let qbad = 0;
 for (const e of E.LEX) for (const x of e.forms) if (E.plain(x.q) !== x.f) qbad++;

@@ -1,9 +1,9 @@
-/* Verto — service worker: tutto in cache per l'uso senza rete. Versione 68c8585e08.
+/* Verto — service worker: tutto in cache per l'uso senza rete. Versione f680c98854.
    Il sito può ospitare altre app (per esempio mirkoc78.github.io/hermeneus/): questo service worker vale solo per la sua
    cartella, usa cache con il nome dell'app e della cartella («verto@/verto/@versione») e all'attivazione cancella
    soltanto le proprie versioni vecchie, mai le cache delle altre app. */
 const APP = 'verto';
-const VERSION = '68c8585e08';
+const VERSION = 'f680c98854';
 const SCOPE = new URL('./', self.location).pathname;
 const PREFIX = APP + '@' + SCOPE + '@';
 const CACHE = PREFIX + VERSION;

@@ -1,4 +1,4 @@
-VERTO — pacchetto per la pubblicazione (versione 68c8585e08)
+VERTO — pacchetto per la pubblicazione (versione f680c98854)
 
 Contenuto
   index.html             l'applicazione completa (caratteri incorporati)

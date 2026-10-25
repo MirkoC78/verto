@@ -2,8 +2,10 @@
    davanti a ns, nf, gn: cōnsul, īnsula, rēgnum). Le vocali senza segno sono brevi.
    n|nominativo|genitivo|genere|significato|flag
    a|maschile|femminile o genitivo|neutro|significato|flag
-   v|presente|infinito|perfetto|supino|significato|flag   (intr = senza passivo personale)
-   d|presente|infinito|participio perfetto|significato     (deponenti)
+     (nocomp = senza gradi; nocompar = senza comparativo, con il superlativo; gpum = genitivo plurale in -um;
+      nnp = senza nominativo e accusativo neutro plurale)
+   v|presente|infinito|perfetto|supino|significato|flag   (intr = senza passivo personale; fio = il passivo del presente è fīō)
+   d|presente|infinito|participio perfetto|significato     (deponenti; mix=5 = presente indicativo come la mista)
    s|presente|infinito|participio perfetto|significato     (semideponenti)
    x|lemma|significato|flag                                 (irregolari)
    p|chiave|significato|argomento|flag                      (pronomi)
@@ -99,7 +101,7 @@ n|lēgātus|lēgātī|m|ambasciatore, luogotenente
 n|animus|animī|m|animo, coraggio
 n|hortus|hortī|m|orto, giardino
 n|lūdus|lūdī|m|gioco, scuola
-n|locus|locī|m|luogo
+n|locus|locī|m|luogo|x=loca:nom:p;loca:acc:p;loca:voc:p
 n|oculus|oculī|m|occhio
 n|mūrus|mūrī|m|muro
 n|gladius|gladiī|m|spada
@@ -250,14 +252,14 @@ a|miser|misera|miserum|misero, infelice
 a|līber|lībera|līberum|libero
 a|laetus|laeta|laetum|lieto, contento
 a|grātus|grāta|grātum|gradito, grato
-a|novus|nova|novum|nuovo
+a|novus|nova|novum|nuovo|nocompar
 a|antīquus|antīqua|antīquum|antico
 a|clārus|clāra|clārum|famoso, illustre, chiaro
 a|superbus|superba|superbum|superbo
 a|iūstus|iūsta|iūstum|giusto
-a|Rōmānus|Rōmāna|Rōmānum|romano
-a|Graecus|Graeca|Graecum|greco
-a|Latīnus|Latīna|Latīnum|latino
+a|Rōmānus|Rōmāna|Rōmānum|romano|nocomp
+a|Graecus|Graeca|Graecum|greco|nocomp
+a|Latīnus|Latīna|Latīnum|latino|nocomp
 a|Trōiānus|Trōiāna|Trōiānum|troiano|nocomp
 a|tūtus|tūta|tūtum|sicuro, protetto
 a|certus|certa|certum|certo, sicuro
@@ -285,7 +287,7 @@ a|fortis|forte|-|forte, coraggioso
 a|omnis|omne|-|ogni; (pl.) tutti|nocomp
 a|brevis|breve|-|breve
 a|ācer|ācris|ācre|aspro, fiero, acuto
-a|celer|celeris|celere|veloce
+a|celer|celeris|celere|veloce|gpum
 a|facilis|facile|-|facile
 a|difficilis|difficile|-|difficile
 a|fēlīx|fēlīcis|-|felice, fortunato
@@ -307,8 +309,8 @@ a|commūnis|commūne|-|comune
 a|levis|leve|-|leggero
 a|fidēlis|fidēle|-|fedele
 a|vetus|veteris|-|vecchio, antico|c,nocomp
-a|dīves|dīvitis|-|ricco|c,nocomp
-a|pauper|pauperis|-|povero|c,nocomp
+a|dīves|dīvitis|-|ricco|c,nocomp,nnp
+a|pauper|pauperis|-|povero|c,nocomp,nnp
 # ---- Verbi 1ª coniugazione
 v|amō|amāre|amāvī|amātum|amare
 v|laudō|laudāre|laudāvī|laudātum|lodare
@@ -434,7 +436,7 @@ v|dīvidō|dīvidere|dīvīsī|dīvīsum|dividere
 v|cōnsulō|cōnsulere|cōnsuluī|cōnsultum|consultare, provvedere
 # ---- Verbi 3ª mista
 v|capiō|capere|cēpī|captum|prendere, conquistare
-v|faciō|facere|fēcī|factum|fare|imp=fac
+v|faciō|facere|fēcī|factum|fare|imp=fac,fio
 v|fugiō|fugere|fūgī|fugitum|fuggire|intr
 v|cupiō|cupere|cupīvī|cupītum|desiderare
 v|accipiō|accipere|accēpī|acceptum|ricevere, accogliere
@@ -494,13 +496,13 @@ d|sequor|sequī|secūtus|seguire, inseguire
 d|loquor|loquī|locūtus|parlare
 d|ūtor|ūtī|ūsus|usare, servirsi di (+ abl.)
 d|proficīscor|proficīscī|profectus|partire
-d|nāscor|nāscī|nātus|nascere
+d|nāscor|nāscī|nātus|nascere|fp=nāscitūrus
 d|morior|morī|mortuus|morire|fp=moritūrus
 d|patior|patī|passus|soffrire, sopportare
 d|ēgredior|ēgredī|ēgressus|uscire
 d|aggredior|aggredī|aggressus|assalire
 d|prōgredior|prōgredī|prōgressus|avanzare
-d|orior|orīrī|ortus|sorgere, nascere|fp=oritūrus
+d|orior|orīrī|ortus|sorgere, nascere|fp=oritūrus,mix=5
 d|largior|largīrī|largītus|elargire
 d|experior|experīrī|expertus|sperimentare
 s|audeō|audēre|ausus|osare

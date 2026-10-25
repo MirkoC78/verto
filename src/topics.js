@@ -82,7 +82,7 @@ const TOPICS = [
     { adj: "bonus" },
     { p: "L’aggettivo <b>concorda</b> con il nome in genere, numero e caso, ma non sempre ha la stessa desinenza: <span class=\"la\">agricola bonus</span>, <span class=\"la\">nautae boni</span>." },
     { ul: ["<b>Attributo</b>: <span class=\"la\">puella pulchra cantat</span> — la bella fanciulla canta.","<b>Predicato</b> (con sum): <span class=\"la\">puella pulchra est</span> — la fanciulla è bella.","<b>Sostantivato</b>: <span class=\"la\">boni</span> = i buoni; <span class=\"la\">multa</span> = molte cose."] },
-    { p: "Gli <b>aggettivi pronominali</b> (<span class=\"la\">unus, solus, totus, nullus, ullus, alius, alter</span>) hanno il genitivo singolare in <span class=\"la\">-ius</span> e il dativo in <span class=\"la\">-i</span>: <span class=\"la\">totius, toti</span>." },
+    { p: "Gli <b>aggettivi pronominali</b> (<span class=\"la\">unus, solus, totus, nullus, ullus, alius, alter</span>) hanno il genitivo singolare in <span class=\"la\">-ius</span> e il dativo in <span class=\"la\">-i</span>: <span class=\"la\">totius, toti</span>. Il genitivo di <span class=\"la\">alius</span> è <span class=\"la\">alīus</span>, uguale al nominativo se non si segna la quantità: per questo si usa spesso <span class=\"la\">alterius</span>." },
   ],
   tip: "Per ogni aggettivo cerca il nome con cui concorda: è la prima cosa da «agganciare» quando costruisci la frase.",
   trap: ["<span class=\"la\">clarorum poetarum</span>: desinenze diverse, ma stesso caso e numero.","Un aggettivo neutro plurale sostantivato si traduce con «cose»: <span class=\"la\">multa</span> = molte cose."],
@@ -172,7 +172,7 @@ const TOPICS = [
     { p: "Avverbi: <span class=\"la\">fortis → fortiter</span>, <span class=\"la\">acer → acriter</span>, <span class=\"la\">celer → celeriter</span>, <span class=\"la\">prudens → prudenter</span>. <span class=\"la\">Omnis</span> = «ogni» al singolare, «tutti» al plurale." },
   ],
   tip: "Un aggettivo della 2ª classe può accompagnare nomi di qualsiasi declinazione: concorda in genere, numero e caso, ma la desinenza può essere diversa.",
-  trap: ["<span class=\"la\">acri</span> può essere dativo o ablativo singolare.","<span class=\"la\">omnia</span> è neutro plurale: «tutte le cose»."],
+  trap: ["<span class=\"la\">acri</span> può essere dativo o ablativo singolare.","<span class=\"la\">omnia</span> è neutro plurale: «tutte le cose».","<span class=\"la\">celer</span> fa il genitivo plurale <span class=\"la\">celerum</span>; <span class=\"la\">vetus, dives, pauper</span> fanno <span class=\"la\">vetere, veterum, vetera</span> (e <span class=\"la\">dives, pauper</span> non hanno il neutro plurale)."],
   ex: [["Omnes homines felices esse cupiunt.","Tutti gli uomini desiderano essere felici."]],
 },
 {

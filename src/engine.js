@@ -135,23 +135,24 @@
     const out = [];
     const pron = opts.pron;
     const mEnd = ends(mNom, 'us');
+    const genP = (stem.endsWith('i') ? stem.slice(0, -1) : stem) + 'īus'; // ūnīus, tōtīus; alius → alīus
     D2M.s.forEach((end, i) => {
       let f = stem + end;
       if (i === 0) f = mNom;
       if (i === 4) f = mEnd ? (opts.vocMi ? 'mī' : stem + 'e') : mNom;
-      if (pron && i === 1) f = stem + 'īus';
+      if (pron && i === 1) f = genP;
       if (pron && i === 2) f = stem + 'ī';
       out.push({ f, c: CASES[i], n: 's', g: 'm' });
     });
     D1.s.forEach((end, i) => {
       let f = stem + end;
-      if (pron && i === 1) f = stem + 'īus';
+      if (pron && i === 1) f = genP;
       if (pron && i === 2) f = stem + 'ī';
       out.push({ f, c: CASES[i], n: 's', g: 'f' });
     });
     D2N.s.forEach((end, i) => {
       let f = stem + end;
-      if (pron && i === 1) f = stem + 'īus';
+      if (pron && i === 1) f = genP;
       if (pron && i === 2) f = stem + 'ī';
       if (opts.neutD && (i === 0 || i === 3 || i === 4)) f = opts.neutD;
       out.push({ f, c: CASES[i], n: 's', g: 'n' });
@@ -203,6 +204,8 @@
     let pos;
     if (info.cls === 1) pos = decl1Adj(info.m, info.stem, { pron: a.pron, vocMi: a.vocMi, neutD: a.neutD });
     else pos = decl3Adj(info.m, info.f, info.n, info.stem, !a.cons, false);
+    if (a.gpUm) pos.forEach((x) => { if (x.c === 'gen' && x.n === 'p') x.f = x.f.replace(/ium$/, 'um'); }); // celer, celerum
+    if (a.noNeutPl) pos = pos.filter((x) => !(x.g === 'n' && x.n === 'p' && ['nom', 'acc', 'voc'].includes(x.c))); // dīves, pauper
     if (a.extra) a.extra.forEach((x) => pos.push(x));
     const res = pos.map((x) => ({ ...x, deg: 'pos' }));
     if (!a.nocomp && !a.pron) {
@@ -216,7 +219,7 @@
         if (norm(info.m).endsWith('er')) sup = info.m + 'rimus';
         else if (ILLIMUS.includes(norm(info.m))) sup = st + 'limus';
         else sup = st + 'issimus';
-        comparativeForms(st + 'ior', st + 'ius', st + 'iōr').forEach((x) => res.push({ ...x, deg: 'comp' }));
+        if (!a.noCompar) comparativeForms(st + 'ior', st + 'ius', st + 'iōr').forEach((x) => res.push({ ...x, deg: 'comp' }));
       }
       if (norm(info.m) === 'multus') {
         [['plūs', 'nom', 's', 'n'], ['plūris', 'gen', 's', 'n'], ['plūs', 'acc', 's', 'n'], ['plūre', 'abl', 's', 'n']].forEach(([f, c, n, g]) => res.push({ f, c, n, g, deg: 'comp' }));
@@ -314,7 +317,7 @@
     add(v.inf, 'inf', 'pres', 'act', null);
     subjAct(k).forEach((e, i) => add(R + e, 'cong', 'pres', 'act', i));
     SIMPF_ACT.forEach((e, i) => add(SI + e, 'cong', 'impf', 'act', i));
-    if (!v.intr) {
+    if (!v.intr && !v.noPresPass) {
       PRES_PASS[k].forEach((e, i) => add(R + e, 'ind', 'pres', 'pass', i));
       BA_PASS.forEach((e, i) => add(R + IMPF_V[k] + e, 'ind', 'impf', 'pass', i));
       FUT_PASS[k].forEach((e, i) => add(R + e, 'ind', 'fut', 'pass', i));
@@ -325,8 +328,8 @@
     const [ps, pt] = PART_PRES[k];
     participleDecl(add, R + ps, R + pt, 'pres');
     perfectSystem(add, v);
-    // dō ha la a breve fuori da dās e dā (damus, dabam, dare)
-    if (v.shortA) list.forEach((x) => { if (!['dās', 'dā'].includes(x.f)) x.f = x.f.replace(/^dā/, 'da'); });
+    // dō ha la a breve fuori da dās, dā e dāns (damus, dabam, dare)
+    if (v.shortA) list.forEach((x) => { if (!['dās', 'dā', 'dāns'].includes(x.f)) x.f = x.f.replace(/^dā/, 'da'); });
     return { conj: k, forms: list };
   }
 
@@ -353,9 +356,9 @@
     const base = 'v_dep';
     const add = VF(list, base);
     let [k, R] = depConjOf(v.pres, v.inf);
-    if (v.mix) k = +v.mix; // orior: presente come la mista, infinito in -īrī
     const virt = R + INF_ACT[k].slice(0, -1);
-    PRES_PASS[k].forEach((e, i) => add(i === 0 ? v.pres : R + e, 'ind', 'pres', 'dep', i));
+    const kp = v.mix ? +v.mix : k; // orior: presente indicativo come la mista (oreris, oritur), il resto in -īrī
+    PRES_PASS[kp].forEach((e, i) => add(i === 0 ? v.pres : R + e, 'ind', 'pres', 'dep', i));
     BA_PASS.forEach((e, i) => add(R + IMPF_V[k] + e, 'ind', 'impf', 'dep', i));
     FUT_PASS[k].forEach((e, i) => add(R + e, 'ind', 'fut', 'dep', i));
     add(v.inf, 'inf', 'pres', 'dep', null);
@@ -713,7 +716,7 @@
         } else if (k === 'a') {
           const fl = parseFlags(f[5]);
           const parts = [f[1], f[2], f[3]].filter((s) => s && s !== '-');
-          e = { k: 'a', parts, it: f[4], pron: !!fl.pron, cons: !!fl.c, nocomp: !!fl.nocomp || !!fl.pron, vocMi: !!fl.mi, neutD: fl.nd };
+          e = { k: 'a', parts, it: f[4], pron: !!fl.pron, cons: !!fl.c, nocomp: !!fl.nocomp || !!fl.pron, noCompar: !!fl.nocompar, gpUm: !!fl.gpum, noNeutPl: !!fl.nnp, vocMi: !!fl.mi, neutD: fl.nd };
           if (fl.x) e.extra = fl.x.split(';').map((s) => { const [ff, c, n, g] = s.split(':'); return { f: ff, c, n, g }; });
           const r = adjForms(e);
           e.adjCls = r.info.cls;
@@ -733,7 +736,7 @@
           let r;
           if (k === 'v') {
             const fl = parseFlags(f[6]);
-            e = { k: 'v', pres: f[1], inf: f[2], perf: f[3], sup: f[4], it: f[5], intr: !!fl.intr, imp: fl.imp, fp: fl.fp, t: fl.t, shortA: !!fl.shortA };
+            e = { k: 'v', pres: f[1], inf: f[2], perf: f[3], sup: f[4], it: f[5], intr: !!fl.intr, noPresPass: !!fl.fio, imp: fl.imp, fp: fl.fp, t: fl.t, shortA: !!fl.shortA };
             r = regularVerbForms(e);
             e.lemmaQ = [e.pres, e.perf !== '-' ? e.perf : null, e.sup !== '-' ? e.sup : null, e.inf].filter(Boolean).join(', ');
             e.t = e.t || 'v_pres';
