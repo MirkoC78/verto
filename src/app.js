@@ -1641,7 +1641,7 @@ function boot() {
   render();
   if (NOSAVE && HASH.lesson != null) { startLesson(+HASH.lesson, { teach: true }); if (HASH.step) { SES.i = Math.min(SES.items.length - 1, +HASH.step); renderItem(); } }
   try { if ('speechSynthesis' in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; } } catch (e) { /* ignora */ }
-  if (SITE && 'serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+  if (SITE && 'serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(() => {});
 }
 // per la verifica automatica nel browser
 window.VertoApp = { S: () => S, ses: () => SES, cur: () => SES && SES.cur, show: (i) => { if (SES) { SES.i = i; renderItem(); } }, startLesson, startPractice, FLAT, render, set: (o) => { Object.assign(S, o); save(); render(); }, setVIEW: (v) => { VIEW = v; render(); } };

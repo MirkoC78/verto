@@ -1,9 +1,10 @@
-VERTO — pacchetto per la pubblicazione (versione 7642209d06)
+VERTO — pacchetto per la pubblicazione (versione 68c8585e08)
 
 Contenuto
   index.html             l'applicazione completa (caratteri incorporati)
   manifest.webmanifest   dati per l'installazione su telefono
-  sw.js                  service worker: rende l'app utilizzabile senza rete
+  sw.js                  service worker: rende l'app utilizzabile senza rete (solo nella sua cartella)
+  .nojekyll              per GitHub Pages: pubblica i file così come sono
   icons/                 icone dell'app
   LICENZE-CARATTERI.txt  licenze SIL OFL 1.1 di Lexend, Marcellus e Gentium Book Plus
 

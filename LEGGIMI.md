@@ -11,6 +11,23 @@ Tutto funziona sul dispositivo: nessun account, nessuna intelligenza artificiale
   `index.html`, `manifest.webmanifest`, `sw.js` (uso senza rete), `icons/`, `LICENZE-CARATTERI.txt`, `LEGGIMI.txt`.
   Da lì si installa su iPhone («Condividi → Aggiungi alla schermata Home») e su Android («Installa app»).
 
+## Pubblicazione: https://mirkoc78.github.io/verto/
+Il sito è pubblicato con GitHub Pages dal ramo `gh-pages`, che contiene solo la cartella `dist/sito`;
+il progetto completo è sul ramo `main` del repository [MirkoC78/verto](https://github.com/MirkoC78/verto).
+Per pubblicare un aggiornamento, dalla cartella del progetto in Git Bash:
+```
+bash tools/pubblica.sh "che cosa è cambiato"
+```
+Lo script ricostruisce l'app, lancia i test (se uno fallisce si ferma), salva e invia `main`, poi copia `dist/sito`
+in `gh-pages` con `git subtree split` e lo invia. Dopo uno o due minuti il sito è aggiornato; chi ha già l'app
+riceve la versione nuova alla visita successiva, perché il service worker cambia cache a ogni versione.
+
+Il dominio mirkoc78.github.io ospita anche altre app (per esempio Hermeneus), quindi Verto:
+- salva i progressi solo nella chiave `verto.v2` di localStorage (legge `verto.v1` di Verto 1, mai le chiavi di altre app);
+- registra il service worker con ambito `./`, cioè solo la cartella `/verto/`;
+- chiama le sue cache `verto@/verto/@<versione>` e all'attivazione cancella soltanto le proprie versioni vecchie;
+- usa solo percorsi relativi (`./`) per manifest, `start_url`, `scope`, service worker e icone.
+
 ## Costruire e provare
 ```
 node build.js            # ricostruisce dist/verto.html e dist/sito/

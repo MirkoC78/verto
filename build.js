@@ -39,7 +39,7 @@ const MARK = '<svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><path d="
 
 function page(site) {
   const icons = !hasIcons ? '' : site
-    ? `<link rel="manifest" href="manifest.webmanifest">\n<link rel="icon" href="icons/favicon-32.png" sizes="32x32">\n<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">`
+    ? `<link rel="manifest" href="./manifest.webmanifest">\n<link rel="icon" href="./icons/favicon-32.png" sizes="32x32">\n<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">`
     : `<link rel="icon" href="${png('favicon-32.png')}" sizes="32x32">\n<link rel="apple-touch-icon" href="${png('apple-touch-icon.png')}">`;
   return `<!doctype html>
 <html lang="it">
@@ -83,33 +83,56 @@ if (hasIcons) for (const f of fs.readdirSync(ASSETS_DIR)) fs.copyFileSync(path.j
 if (fs.existsSync(path.join(ROOT, 'fonts', 'LICENZE-CARATTERI.txt'))) fs.copyFileSync(path.join(ROOT, 'fonts', 'LICENZE-CARATTERI.txt'), path.join(SITE, 'LICENZE-CARATTERI.txt'));
 fs.writeFileSync(path.join(SITE, 'manifest.webmanifest'), JSON.stringify({
   name: 'Verto: latino per il biennio', short_name: 'Verto', description: 'Corso guidato di latino per il biennio del liceo: lezioni, traduzioni, teoria e lessico.',
-  lang: 'it', dir: 'ltr', start_url: './', scope: './', display: 'standalone', orientation: 'portrait',
+  id: './', lang: 'it', dir: 'ltr', start_url: './', scope: './', display: 'standalone', orientation: 'portrait',
   background_color: THEME, theme_color: THEME, categories: ['education'],
   icons: [
-    { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-    { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-    { src: 'icons/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+    { src: './icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+    { src: './icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+    { src: './icons/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
   ],
 }, null, 2));
-const ASSETS = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png', 'icons/favicon-32.png'];
-fs.writeFileSync(path.join(SITE, 'sw.js'), `/* Verto — service worker: tutto in cache per l'uso senza rete. Versione ${version}. */
-const CACHE = 'verto-${version}';
+const ASSETS = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png', './icons/apple-touch-icon.png', './icons/favicon-32.png'];
+fs.writeFileSync(path.join(SITE, 'sw.js'), `/* Verto — service worker: tutto in cache per l'uso senza rete. Versione ${version}.
+   Il sito può ospitare altre app (per esempio mirkoc78.github.io/hermeneus/): questo service worker vale solo per la sua
+   cartella, usa cache con il nome dell'app e della cartella («verto@/verto/@versione») e all'attivazione cancella
+   soltanto le proprie versioni vecchie, mai le cache delle altre app. */
+const APP = 'verto';
+const VERSION = '${version}';
+const SCOPE = new URL('./', self.location).pathname;
+const PREFIX = APP + '@' + SCOPE + '@';
+const CACHE = PREFIX + VERSION;
 const ASSETS = ${JSON.stringify(ASSETS)};
-self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting())); });
-self.addEventListener('activate', (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim())); });
+self.addEventListener('install', (e) => {
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+});
+self.addEventListener('activate', (e) => {
+  e.waitUntil(caches.keys()
+    .then((ks) => Promise.all(ks.filter((k) => k.startsWith(PREFIX) && k !== CACHE).map((k) => caches.delete(k))))
+    .then(() => self.clients.claim()));
+});
 self.addEventListener('fetch', (e) => {
   const req = e.request;
-  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
-  if (req.mode === 'navigate') { e.respondWith(caches.match('index.html').then((r) => r || fetch(req))); return; }
-  e.respondWith(caches.match(req).then((r) => r || fetch(req).then((res) => { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); return res; })));
+  const url = new URL(req.url);
+  if (req.method !== 'GET' || url.origin !== self.location.origin || !url.pathname.startsWith(SCOPE)) return;
+  if (req.mode === 'navigate') {
+    e.respondWith(caches.open(CACHE).then((c) => c.match('./index.html')).then((r) => r || fetch(req)));
+    return;
+  }
+  e.respondWith(caches.open(CACHE).then((c) => c.match(req, { ignoreSearch: true }).then((r) => r || fetch(req).then((res) => {
+    if (res.ok) c.put(req, res.clone());
+    return res;
+  }))));
 });
 `);
+// GitHub Pages: niente elaborazione Jekyll della cartella
+fs.writeFileSync(path.join(SITE, '.nojekyll'), '');
 fs.writeFileSync(path.join(SITE, 'LEGGIMI.txt'), `VERTO — pacchetto per la pubblicazione (versione ${version})
 
 Contenuto
   index.html             l'applicazione completa (caratteri incorporati)
   manifest.webmanifest   dati per l'installazione su telefono
-  sw.js                  service worker: rende l'app utilizzabile senza rete
+  sw.js                  service worker: rende l'app utilizzabile senza rete (solo nella sua cartella)
+  .nojekyll              per GitHub Pages: pubblica i file così come sono
   icons/                 icone dell'app
   LICENZE-CARATTERI.txt  licenze SIL OFL 1.1 di Lexend, Marcellus e Gentium Book Plus
 
