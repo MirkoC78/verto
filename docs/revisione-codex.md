@@ -23,12 +23,31 @@ Le regressioni sono in `test/review.test.js`: sul codice di prima trovano 2184 e
 | Riquadro della parola (controllo aggiuntivo) | ✅ adottata | All'apertura il focus entra nel riquadro; con Esc o chiudendolo torna alla parola |
 | Importazione dei salvataggi (controllo aggiuntivo) | ✅ adottata | Il file viene controllato prima di toccare lo stato (versione, sblocco nei limiti, stelle 1–3, tipi dei campi): un file incompleto o incoerente mostra un messaggio chiaro e non sovrascrive nulla |
 
+## Feedback diagnostico (VERTO-009), fatto su richiesta
+Quando una risposta è sbagliata, sotto la soluzione compare una spiegazione mirata (al massimo due frasi), ricavata dalle analisi del motore
+e dalla struttura della frase: `src/explain.js`. Non indovina il significato: dice che cosa la forma latina permette.
+
+| Esercizio | Che cosa spiega | Esempio |
+|---|---|---|
+| Versione | negazione aggiunta o tolta; ruoli scambiati (stesse parole, ordine diverso); forma italiana cambiata, ricondotta alla parola latina; parola mancante o in più | «Le parole sono giuste, ma hai scambiato i ruoli: *lupus* è al nominativo, quindi è il soggetto; *agnum* è all'accusativo, quindi è l'oggetto» · ««vede», non «vedono»: *videt* è indicativo presente attivo, 3ª pers. sing.» |
+| Versione scritta non riconosciuta | nel confronto guidato: solo gli errori certi (negazione, ruoli scambiati) e com'è costruita la frase (verbo, soggetto, oggetto, preposizione + caso) | «Com'è costruita la frase: verbo *videt* (…); soggetto *lupus* (nominativo); oggetto *agnum* (accusativo); *in silvā*: in + ablativo» |
+| Retroversione (tessere o tastiera) | la forma scelta rispetto a quella che serve: caso → funzione; stesso caso → numero; nel verbo modo, tempo, diatesi, persona (concordanza con il soggetto); tessera mancante; ordine di *nōn* e delle congiunzioni | «Hai scelto *Gallōs* (accusativo plurale): qui serve *Gallī*, nominativo plurale — è il soggetto, chi compie l'azione» |
+| Analisi | perché la lettura scelta è impossibile e quali sono possibili | «*agricolae* non è l'accusativo singolare: l'accusativo singolare di *agricola* è *agricolam*» |
+| Completa | letture della forma scelta, forma che serve e perché | «*sedebant* è 3ª pers. plur.: qui serve *sedēbās*, 2ª pers. sing. — come «sedevi» nella traduzione» |
+| Concordanza | caso, numero e genere dell'aggettivo scelto e del nome | «*iūstōs* è accusativo plurale maschile; *īrae* è dativo singolare femminile: serve *iūstae*» |
+| Scrivi la forma | che cosa è la forma scritta, o dove cambia | «*rosae* è genitivo singolare…; l'accusativo singolare è *rosam*» |
+| Lessico | i due significati confusi | «*lupus* significa «lupo»; *agnus* significa «agnello»» |
+
+Verifica: `test/explain.test.js` con 21 casi fissi e 2000 risposte sbagliate simulate su tutte le lezioni (ogni spiegazione esiste,
+cita solo forme latine vere, non contiene buchi); controllo nell'app dei casi di versione, retroversione e analisi.
+Limiti: l'aggancio tra parole italiane e latine passa dalle radici dei significati del lessico, quindi con verbi irregolari italiani
+(«è», «va») o sinonimi non previsti la spiegazione resta più generica; le spiegazioni non sono state provate con studenti.
+
 ## Proposte che richiedono una scelta
 | Voce | Che cosa servirebbe decidere |
 |---|---|
 | **VERTO-007** Ripresa delle lezioni interrotte | Salvare l'esercizio in corso (con frasi generate e tessere) oppure dire più chiaramente che una lezione interrotta riparte da capo |
 | **VERTO-008** Altri tipi di errore nel ripasso | Quali competenze ripassare a distanza (lettura, accento, sillabe, quantità, concordanza) e con quale peso |
-| **VERTO-009** Feedback diagnostico | Spiegazioni mirate dell'errore («*agnum* è accusativo: è l'agnello a subire l'azione»). La traccia nel confronto guidato è già stata aggiunta con VERTO-001 |
 | **VERTO-010** Microletture e verifica del trasferimento | Brani di 3–4 frasi collegate con domanda di comprensione; richiede contenuti nuovi scritti e revisionati |
 | **VERTO-013** Etichette degli strumenti, percorso più corto | Etichette di testo sotto le icone degli strumenti; unità future chiuse e espandibili. Da provare con studenti |
 

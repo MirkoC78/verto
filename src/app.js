@@ -478,6 +478,7 @@ function latinTiles(s) {
   const n = levelOf() ? levelOf().extra ?? 3 : 3;
   const dis = [];
   for (const t of shuffle(toks).concat(shuffle(toks))) {
+    const at = toks.indexOf(t);
     if (dis.length >= n) break;
     const e = ent(t.uid);
     if (!e || !['n', 'v', 'a', 'p'].includes(e.k)) continue;
@@ -487,7 +488,7 @@ function latinTiles(s) {
       const label = ws.map((x) => (x === t ? (S.settings.quant ? a.q : a.f) : shownWord(x))).join(' ');
       const lab = label.charAt(0).toLowerCase() === label.charAt(0) || (ent(ws[0].uid) && ent(ws[0].uid).prop) ? label : label.charAt(0).toLowerCase() + label.slice(1);
       if (have.has(E.norm(lab))) continue;
-      have.add(E.norm(lab)); dis.push({ label: lab, distractor: true }); break;
+      have.add(E.norm(lab)); dis.push({ label: lab, distractor: true, uid: t.uid, key: a.key, at }); break;
     }
   }
   return shuffle(tiles.concat(dis));
@@ -605,6 +606,9 @@ function markOptions(ok, isRight) {
     else if (k === SES.cur.picked && !ok) b.classList.add('wrong');
   });
 }
+// spiegazione mirata dell'errore (src/explain.js), dalle analisi del motore
+const XP = window.VertoExplain;
+function why(fn) { try { const out = fn(); return Array.isArray(out) ? out.filter(Boolean) : []; } catch (e) { return []; } }
 function doCheck() {
   const c = SES.cur; if (!c || c.answered) return;
   const it = c.it;
@@ -615,7 +619,7 @@ function doCheck() {
       if (!c.chosen.length) return;
       const built = c.chosen.map((k) => c.tiles[k].label).join(' ');
       const ok = it.s.it.some((r) => normIt(r) === normIt(built));
-      res = { ok, sol: it.s.it[0], given: built, near: !ok && CK.sim(normIt(built), normIt(it.s.it[0])) > 0.8 };
+      res = { ok, sol: it.s.it[0], given: built, near: !ok && CK.sim(normIt(built), normIt(it.s.it[0])) > 0.8, why: ok ? [] : why(() => XP.laIt(it, built, { quant: S.settings.quant })) };
     } else {
       const ans = $('#typed').value.trim();
       if (!ans) return toast('Scrivi la traduzione.');
@@ -631,7 +635,7 @@ function doCheck() {
       const noDis = toks.every((t) => !t.distractor);
       const ok = noDis && SN.orderOK(it.s.la, toks.map((t) => t.key));
       const sameOrder = toks.map((t) => t.key).join(' ') === SN.tiles(it.s.la).join(' ');
-      res = { ok, sol: solShown, latin: true, note: ok && !sameOrder ? 'Giusto: in latino l’ordine delle parole è libero. Ordine del testo: ' + solShown : '' };
+      res = { ok, sol: solShown, latin: true, note: ok && !sameOrder ? 'Giusto: in latino l’ordine delle parole è libero. Ordine del testo: ' + solShown : '', why: ok ? [] : why(() => XP.itLa(it, toks, { quant: S.settings.quant })) };
     } else {
       const ans = $('#typed').value.trim();
       if (!ans) return toast('Scrivi la frase in latino.');
@@ -639,33 +643,33 @@ function doCheck() {
       const ok = !!tl && SN.orderOK(it.s.la, tl);
       const refQ = (it.s.tokens || []).map((t) => t.q);
       const typedW = ans.replace(/[.,;:!?]/g, ' ').split(/\s+/).filter(Boolean);
-      res = { ok, sol: solShown, latin: true, typed: true, quant: ok && S.settings.quant ? quantWarnings(typedW, ok && tl.join(' ') === SN.tiles(it.s.la).join(' ') ? refQ : []) : [] };
+      res = { ok, sol: solShown, latin: true, typed: true, why: ok ? [] : why(() => XP.itLaTyped(it, ans, { quant: S.settings.quant })), quant: ok && S.settings.quant ? quantWarnings(typedW, ok && tl.join(' ') === SN.tiles(it.s.la).join(' ') ? refQ : []) : [] };
     }
   } else if (it.type === 'analizza') {
     const valid = S.settings.quant && it.validQ ? it.validQ : it.valid;
     const ok = valid.includes(it.options[c.picked]);
-    res = { ok, sol: it.correct, others: valid.length > 1 ? valid : null };
+    res = { ok, sol: it.correct, others: valid.length > 1 ? valid : null, why: ok ? [] : why(() => XP.analizza(it, it.options[c.picked], { quant: S.settings.quant })) };
     markOptions(ok, (k) => valid.includes(it.options[k]));
   } else if (it.type === 'scrivi') {
     const raw = $('#typed').value.trim();
     if (!raw) return toast('Scrivi la forma.');
     const ok = it.answers.some((a) => E.norm(a).replace(/v/g, 'u') === E.norm(raw).replace(/v/g, 'u'));
     const q = ok && raw !== E.plain(raw) && !it.qs.some((x) => x.toLowerCase() === raw.toLowerCase()) ? [{ got: raw, want: it.qs[0] }] : [];
-    res = { ok, sol: (S.settings.quant ? it.qs : it.answers).join(' / '), latin: true, quant: q };
+    res = { ok, sol: (S.settings.quant ? it.qs : it.answers).join(' / '), latin: true, quant: q, why: ok ? [] : why(() => XP.scrivi(it, raw, { quant: S.settings.quant })) };
   } else if (it.type === 'completa') {
     const ok = E.norm(it.options[c.picked]) === E.norm(it.answer);
-    res = { ok, sol: laShow(it.s), latin: true };
+    res = { ok, sol: laShow(it.s), latin: true, why: ok ? [] : why(() => XP.completa(it, c.picked, { quant: S.settings.quant })) };
     markOptions(ok, (k) => E.norm(it.options[k]) === E.norm(it.answer));
     const b = $('#blank'); if (b) b.textContent = it.aq ? showQ(it.answer, it.aq) : quantOf(it.s.tokens[it.idx].uid, it.answer);
   } else if (it.type === 'lessico') {
     const ok = it.options[c.picked] === it.uid;
     const e = ent(it.uid);
-    res = { ok, sol: lemmaOf(e) + ' = ' + e.it };
+    res = { ok, sol: lemmaOf(e) + ' = ' + e.it, why: ok ? [] : why(() => XP.lessico(it, it.options[c.picked])) };
     markOptions(ok, (k) => it.options[k] === it.uid);
     srs(it.uid, ok);
   } else if (it.type === 'accorda') {
     const ok = E.norm(it.options[c.picked]) === E.norm(it.answer);
-    res = { ok, sol: showForm(it.noun.f, it.noun.q) + ' ' + showForm(it.answer, it.aq), latin: true, note: ok ? '' : 'L’aggettivo prende genere, numero e caso del nome: ' + it.noun.d + '.' };
+    res = { ok, sol: showForm(it.noun.f, it.noun.q) + ' ' + showForm(it.answer, it.aq), latin: true, why: ok ? [] : why(() => XP.accorda(it, c.picked, { quant: S.settings.quant })) };
     markOptions(ok, (k) => E.norm(it.options[k]) === E.norm(it.answer));
   } else {
     const ok = it.options[c.picked] === it.right;
@@ -674,10 +678,16 @@ function doCheck() {
   }
   finalize(res);
 }
+// nel confronto guidato: gli errori certi (negazione, ruoli scambiati) e la struttura della frase latina
+function guided(it, ans) {
+  const sure = why(() => XP.laItSure(it, ans, { quant: S.settings.quant }));
+  const read = why(() => [XP.reading(it.s, { quant: S.settings.quant })]);
+  return (sure.length ? `<ul class="why">${sure.map((w) => `<li>${w}</li>`).join('')}</ul>` : '') + (read.length ? `<p class="note">${read[0]}</p>` : '');
+}
 function selfGrade(it, ans, sol) {
   const c = SES.cur; c.answered = true;
   $('#typed').readOnly = true;
-  $('#ovFoot').innerHTML = `<div class="fb">${guide('think', 52)}<div class="fb-txt"><h3>Confronta con la soluzione</h3><p class="sol">${esc(sol)}</p>${it.s.it.length > 1 ? `<p class="note">Anche: ${it.s.it.filter((x) => x !== sol).slice(0, 2).map(esc).join('; ')}</p>` : ''}<p class="note">La tua traduzione è diversa da quelle previste. Prima di giudicare, controlla: chi compie l’azione? che cosa succede, e quando? su chi o su che cosa? c’è una negazione?</p></div></div>
+  $('#ovFoot').innerHTML = `<div class="fb">${guide('think', 52)}<div class="fb-txt"><h3>Confronta con la soluzione</h3><p class="sol">${esc(sol)}</p>${it.s.it.length > 1 ? `<p class="note">Anche: ${it.s.it.filter((x) => x !== sol).slice(0, 2).map(esc).join('; ')}</p>` : ''}<p class="note">La tua traduzione è diversa da quelle previste. Prima di giudicare, controlla: chi compie l’azione? che cosa succede, e quando? su chi o su che cosa? c’è una negazione?</p>${guided(it, ans)}</div></div>
     <div class="btns"><button class="btn err" data-act="self" data-v="0">Ho sbagliato</button><button class="btn ok" data-act="self" data-v="1">Era giusta</button></div>`;
   c.selfData = { ans, sol };
 }
@@ -740,8 +750,9 @@ function showFeedback(res, gained) {
   } else {
     body += `<h3>${res.near ? 'Quasi!' : 'Soluzione'}</h3><p class="sol${res.latin ? ' la' : ''}" ${res.latin ? 'lang="la"' : ''}>${esc(res.sol)}</p>`;
     if (res.note) body += `<p class="note">${esc(res.note)}</p>`;
+    if (res.why && res.why.length) body += `<ul class="why">${res.why.map((w) => `<li>${w}</li>`).join('')}</ul>`;
     if (it.s && it.s.tip) body += `<p class="note">${esc(it.s.tip)}</p>`;
-    else if (!res.near) body += `<p class="note">${esc(pick(C.COMFORT))}</p>`;
+    else if (!res.near && !(res.why && res.why.length)) body += `<p class="note">${esc(pick(C.COMFORT))}</p>`;
   }
   if (res.quant && res.quant.length) body += `<p class="note">Quantità: ${res.quant.slice(0, 3).map((a) => `<span class="la" lang="la">${esc(a.got)}</span> → <span class="la" lang="la">${esc(a.want)}</span>`).join(', ')} (non conta come errore)</p>`;
   const extra = [];

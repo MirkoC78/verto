@@ -46,7 +46,7 @@ le opzioni latine lunghe fuori schermo, i pulsanti verde e rosso illeggibili in 
 rispetto agli obiettivi. Dettagli in `docs/critica-design.md` e `docs/accessibilita.md`.
 
 ## Revisione esterna
-Una revisione indipendente (Codex, 25 ottobre) ha trovato quattro difetti che le prove non avevano visto: il generatore di frasi nuove non partiva nel browser, una traduzione con i ruoli invertiti veniva premiata, con le quantità attive un'analisi poteva premiare la lettura sbagliata, e il vocativo in -ī era esteso a tutti i nomi in -ius. Sono stati corretti, con regressioni in `test/review.test.js` e il giocatore automatico ora controlla anche gli avvisi della console, le frasi generate e le risposte scritte. Dettagli e proposte ancora da decidere in [revisione-codex.md](revisione-codex.md).
+Una revisione indipendente (Codex, 25 ottobre) ha trovato quattro difetti che le prove non avevano visto: il generatore di frasi nuove non partiva nel browser, una traduzione con i ruoli invertiti veniva premiata, con le quantità attive un'analisi poteva premiare la lettura sbagliata, e il vocativo in -ī era esteso a tutti i nomi in -ius. Sono stati corretti, con regressioni in `test/review.test.js` e il giocatore automatico ora controlla anche gli avvisi della console, le frasi generate e le risposte scritte. Su richiesta è stato poi aggiunto il feedback diagnostico (VERTO-009): ogni risposta sbagliata riceve una spiegazione mirata ricavata dalle analisi del motore. Dettagli e proposte ancora da decidere in [revisione-codex.md](revisione-codex.md).
 
 ## Che cosa non è stato verificato
 - **iPhone e Android veri**: le prove sono in un browser Chromium con la larghezza del telefono. Restano da provare su un dispositivo: aree sicure

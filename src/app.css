@@ -457,6 +457,10 @@ html.ov-open { overflow: hidden; }
 @media (prefers-reduced-motion: no-preference) { .fx-in { animation: fxin .22s var(--ease); } }
 @keyframes fxin { from { opacity: 0; transform: translateY(var(--sp-2)); } }
 
+/* spiegazione mirata dell'errore, nel riquadro dell'esito */
+.why { margin: 0; padding-left: var(--sp-5); display: grid; gap: var(--sp-1); font-size: var(--fs-sm); }
+.why .la { font-size: var(--fs-md); }
+
 /* ---------- Lessico ---------- */
 .group-title { font-size: var(--fs-sm); font-weight: 600; color: var(--muted); }
 .rowbtn.word .txt b { white-space: normal; }

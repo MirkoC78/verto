@@ -14,7 +14,7 @@ Tutto funziona sul dispositivo: nessun account, nessuna intelligenza artificiale
 ## Costruire e provare
 ```
 node build.js            # ricostruisce dist/verto.html e dist/sito/
-node test/run-all.js     # motore, banca, teoria, generatore (10.000 frasi), percorso, codice di salvataggio, regressioni della revisione
+node test/run-all.js     # motore, banca, teoria, generatore (10.000 frasi), percorso, codice di salvataggio, regressioni della revisione, spiegazioni degli errori
 python tools/icons.py    # rigenera le icone in assets/ (serve Pillow)
 node tools/audit-tokens.js && node tools/check-classes.js && node tools/contrast.js   # sistema di design e contrasti
 ```
@@ -40,6 +40,7 @@ altrimenti si vede la versione precedente.
 | `src/topics.js` | teoria dei 25 argomenti, metodo, massime, cursus honorum |
 | `src/savecode.js` | codice di salvataggio |
 | `src/check.js` | controllo delle traduzioni italiane scritte |
+| `src/explain.js` | spiegazioni mirate degli errori, dalle analisi del motore |
 | `src/guide.js` | Giano in SVG |
 | `src/app.js`, `src/app.css` | interfaccia e sistema di design |
 | `docs/` | inventario e piano, sistema di design, critica di design, accessibilità, rapporto finale |
