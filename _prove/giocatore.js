@@ -156,6 +156,30 @@
     }
     // ricerca di una forma
     A.setVIEW('words'); const q = $('#q'); if (q) { q.value = 'amabantur'; click($('[data-act="search"]')); checkWidth('ricerca'); }
+    // lessico: ricerca tra le proprie parole, filtri, scheda di ogni parola, ripasso a esercizi
+    A.setVIEW('words'); await wait(0);
+    const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
+    const wq = $('#wq');
+    if (wq) { wq.value = 'am'; fire(wq, 'input'); checkWidth('lessico: ricerca'); a11y('lessico: ricerca'); R.ricercaAm = $$('[data-act="wordSheet"]').length; wq.value = ''; fire(wq, 'input'); }
+    for (const b of $$('[data-act="wordFilter"]')) { click(b); checkWidth('lessico: filtro ' + b.dataset.v); }
+    const wk = $('#wk');
+    if (wk) { wk.value = 'v'; fire(wk, 'change'); checkWidth('lessico: verbi'); R.soloVerbi = $$('[data-act="wordSheet"]').length; wk.value = 'all'; fire(wk, 'change'); }
+    click($('[data-act="wordFilter"][data-v="all"]'));
+    const rows = $$('[data-act="wordSheet"]');
+    R.parole = rows.length; R.esempi = 0;
+    for (const r of rows) {
+      click(r); await wait(0);
+      if ($('#sheet .exline')) R.esempi++;
+      checkWidth('scheda ' + r.dataset.u); a11y('scheda della parola');
+      const c = $('[data-act="closeSheet"]'); if (c) c.click();
+    }
+    const drill = $('[data-act="vocabDrill"]');
+    if (drill && !drill.disabled) {
+      click(drill); let g = 0;
+      while (A.ses() && !A.ses().done && g++ < 40) await playItem('ripasso del lessico #' + A.ses().i);
+      if (A.ses()) click($('[data-act="endSession"]'));
+      R.ripassoLessico = g;
+    }
     void S;
     R.viste = true;
     return R;

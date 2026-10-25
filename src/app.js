@@ -710,6 +710,7 @@ function finalize(res) {
     SES.combo++; SES.best = Math.max(SES.best, SES.combo); SES.ok++; S.stats.correct++;
     gained = (XP_BASE[it.type] || 4) + (SES.combo >= 3 ? 2 : 0) + (it.s && it.s.src === 'gen' ? 1 : 0) + (res.typed ? 2 : 0);
     if (it.type === 'la_it' || it.type === 'it_la') S.stats.translated++;
+    if (it.type === 'abbina' && SES.mode === 'lessico') it.pairs.forEach((p) => srs(p.uid, true));
     if (it.type === 'analizza' || it.type === 'scrivi') S.stats.forms++;
     if (res.typed && !res.self) S.stats.typedOK++;
     if (it.s && it.s.src === 'gen') S.stats.genSeen++;
@@ -830,12 +831,39 @@ function endSession() {
 /* ---------- Ripetizione dilazionata ---------- */
 const BOX_DAYS = [0, 1, 3, 7, 14, 30];
 function srs(uid, ok) { const v = S.vocab[uid] || { box: 0, due: dayKey() }; v.box = ok ? Math.min(5, v.box + 1) : 1; v.due = addDays(dayKey(), BOX_DAYS[v.box]); S.vocab[uid] = v; }
+// parole incontrate: quelle delle lezioni già superate o già fatte (anche le unità aperte scegliendo la posizione),
+// con la lezione in cui ciascuna compare; le parole delle lezioni ancora da fare restano nascoste
+function metWords() {
+  const met = new Map();
+  FLAT.forEach((f, idx) => {
+    if (idx >= S.course.unlocked && !S.course.times[f.lesson.id]) return;
+    for (const u of f.lesson.lemmas || []) if (ent(u) && !met.has(u)) met.set(u, f);
+  });
+  return met;
+}
+const isDue = (uid) => !!S.vocab[uid] && S.vocab[uid].due <= dayKey();
 function vocabQueue() {
-  const known = LS.vocabForTopics(sel());
-  const ents = [...known].map(ent).filter((e) => e && ['n', 'v', 'a', 'p', 'i'].includes(e.k));
-  const due = ents.filter((e) => S.vocab[e.uid] && S.vocab[e.uid].due <= dayKey());
+  const met = metWords();
+  const ents = [...met.keys()].map(ent);
+  const due = ents.filter((e) => isDue(e.uid));
   const fresh = ents.filter((e) => !S.vocab[e.uid]).slice(0, Math.max(0, 10 - due.length));
-  return { due, fresh, all: ents };
+  return { due, fresh, all: ents, met };
+}
+// ripasso a esercizi: le parole di oggi (da ripassare e nuove), riconosciute nei due sensi e abbinate a coppie
+function startVocabDrill() {
+  const q = vocabQueue();
+  const words = shuffle(q.due).concat(q.fresh).slice(0, 10);
+  const items = [];
+  for (const e of words) {
+    const pool = q.all.filter((x) => x !== e && x.k === e.k && x.head !== e.head && shortM(x.it) !== shortM(e.it));
+    if (pool.length < 2) continue;
+    items.push({ type: 'lessico', uid: e.uid, reverse: Math.random() < 0.4, options: shuffle([e.uid, ...shuffle(pool).slice(0, 3).map((x) => x.uid)]), topic: e.t });
+  }
+  const seenM = new Set(), seenH = new Set(), pairs = [];
+  for (const e of words) { const m = shortM(e.it); if (seenM.has(m) || seenH.has(e.head)) continue; seenM.add(m); seenH.add(e.head); pairs.push({ uid: e.uid, la: e.head, lq: e.headQ, it: m }); if (pairs.length >= 5) break; }
+  if (pairs.length >= 3) items.splice(Math.ceil(items.length / 2), 0, { type: 'abbina', pairs, topic: words[0].t });
+  if (!items.length) { toast('Per il ripasso servono almeno quattro parole incontrate.'); return; }
+  begin({ kind: 'practice', mode: 'lessico', items, title: 'Ripasso del lessico', level: null, scope: scopeForPractice(sel(), S.topics[S.topics.length - 1]) });
 }
 
 /* ---------- Popup della parola e fogli ---------- */
@@ -1163,17 +1191,90 @@ function viewTopic(id) {
     ${ui >= 0 && isUnlocked(firstLessonIdx(ui)) ? `<div><button class="btn small ghost" data-act="goUnit" data-u="${id}">${I.via}Vai all’unità nel percorso</button></div>` : ''}</header>
     <section class="card">${theoryHtml(t)}</section>`;
 }
+const WORD_KINDS = [['all', 'Tutti i tipi'], ['n', 'Nomi'], ['a', 'Aggettivi'], ['v', 'Verbi'], ['p', 'Pronomi'], ['i', 'Parole invariabili']];
+const WORD_STATES = [['all', 'Tutte'], ['due', 'Da ripassare'], ['ok', 'Imparate']];
+const WF = { q: '', st: 'all', k: 'all' };
+// scatola della ripetizione: cerchi pieni per le scatole raggiunte, vuoti per le altre
+const pips = (uid) => {
+  const b = S.vocab[uid] ? S.vocab[uid].box : 0;
+  return `<span class="pips" role="img" aria-label="${b ? `scatola ${b} di 5` : 'non ancora ripassata'}">${[1, 2, 3, 4, 5].map((n) => `<i class="${n <= b ? 'on' : ''}"></i>`).join('')}</span>`;
+};
+const wordRow = (e) => `<li><button class="rowbtn word" data-act="wordSheet" data-u="${esc(e.uid)}"><span class="txt"><b class="la" lang="la">${esc(lemmaOf(e))}</b><span>${esc(e.it)}</span></span>${pips(e.uid)}${I.chev}</button></li>`;
+function wordMatches(e) {
+  if (WF.k !== 'all' && e.k !== WF.k) return false;
+  const v = S.vocab[e.uid];
+  if (WF.st === 'due' && !isDue(e.uid)) return false;
+  if (WF.st === 'ok' && !(v && v.box >= 3)) return false;
+  if (!WF.q) return true;
+  return E.norm(e.head).includes(E.norm(WF.q)) || normIt(e.it).includes(normIt(WF.q));
+}
+function wordList(met) {
+  const rows = [...met.entries()].map(([u, f]) => ({ e: ent(u), f })).filter(({ e }) => wordMatches(e));
+  const groups = new Map();
+  for (const r of rows) { if (!groups.has(r.f.ui)) groups.set(r.f.ui, []); groups.get(r.f.ui).push(r.e); }
+  const count = rows.length === met.size ? `${rows.length} parole` : `${rows.length} parole su ${met.size}`;
+  if (!rows.length) return { count, html: '<p class="muted">Nessuna parola corrisponde alla ricerca: prova a togliere un filtro.</p>' };
+  const byHead = (a, b) => E.plain(a.head).localeCompare(E.plain(b.head), 'it');
+  return {
+    count,
+    html: [...groups.entries()].sort((a, b) => a[0] - b[0]).map(([ui, list]) => `<div class="stack"><h3 class="group-title">Unità ${ROMAN(ui + 1)}: ${esc(UNITS[ui].title)}</h3><div class="card flush"><ul class="list">${list.sort(byHead).map(wordRow).join('')}</ul></div></div>`).join(''),
+  };
+}
+function updateWordList() {
+  const out = $('#wordList'), c = $('#wCount');
+  if (!out) return;
+  const r = wordList(metWords());
+  out.innerHTML = r.html;
+  if (c) c.textContent = r.count;
+}
 function viewWords() {
   const q = vocabQueue();
+  const searchSec = `<section class="sec"><h2 class="sec-title">Cerca una forma</h2><div class="card stack"><p class="note">Scrivi una parola latina, anche senza quantità: il motore la analizza.</p>
+      <div class="search"><label class="sr" for="q">Forma latina</label><input id="q" class="typed la" lang="la" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="es. regum, amabatur, eius"><button class="btn ghost" data-act="search" aria-label="Cerca">${I.lens}</button></div><div id="results"></div></div></section>`;
+  if (!q.all.length) {
+    return `<header class="page-head"><h1>Lessico</h1><p class="lede">Qui trovi le parole incontrate nel percorso, con il loro ripasso.</p></header>
+      <section class="sec"><div class="card stack">${say('Le parole compariranno qui man mano che fai le lezioni: ognuna ne presenta qualcuna.', 'happy', 64)}</div></section>${searchSec}`;
+  }
   const nDue = q.due.length + q.fresh.length;
   const learned = q.all.filter((e) => S.vocab[e.uid] && S.vocab[e.uid].box >= 3).length;
-  const boxes = [1, 2, 3, 4, 5].map((b) => Object.values(S.vocab).filter((v) => v.box === b).length);
-  return `<header class="page-head"><h1>Lessico</h1><p class="lede">${learned} parole imparate su ${q.all.length} incontrate nel percorso.</p></header>
+  const boxes = [1, 2, 3, 4, 5].map((b) => q.all.filter((e) => S.vocab[e.uid] && S.vocab[e.uid].box === b).length);
+  const canDrill = nDue > 0 && q.all.length >= 4;
+  const list = wordList(q.met);
+  const row = (act, icon, title, sub, dis, extra = '') => `<li><button class="rowbtn" data-act="${act}" ${extra} ${dis ? 'disabled' : ''}><span class="ico">${icon}</span><span class="txt"><b>${title}</b><span>${sub}</span></span>${I.chev}</button></li>`;
+  return `<header class="page-head"><h1>Lessico</h1><p class="lede">${q.all.length} parole incontrate nel percorso, ${learned} imparate.</p></header>
     <section class="sec"><h2 class="sec-title">Ripasso di oggi</h2><div class="card stack"><p class="note">${nDue ? `${q.due.length} da ripassare, ${q.fresh.length} nuove` : 'Per oggi hai finito: torna domani.'}</p><div id="flash" class="flash"></div>
       <div class="boxes" aria-label="Scatole della ripetizione dilazionata">${boxes.map((n, i) => `<div class="box"><b>${n}</b><span>${['1 g', '3 gg', '7 gg', '14 gg', '30 gg'][i]}</span></div>`).join('')}</div>
-      <p class="note">Ogni parola che sai passa alla scatola successiva e torna dopo più giorni; se la sbagli, riparte dalla prima.</p></div></section>
-    <section class="sec"><h2 class="sec-title">Cerca una forma</h2><div class="card stack"><p class="note">Scrivi una parola latina, anche senza quantità: il motore la analizza.</p>
-      <div class="search"><label class="sr" for="q">Forma latina</label><input id="q" class="typed la" lang="la" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="es. regum, amabatur, eius"><button class="btn" data-act="search" aria-label="Cerca">${I.lens}</button></div><div id="results"></div></div></section>`;
+      <p class="note">Ogni parola che sai passa alla scatola successiva e torna dopo più giorni; se la sbagli, riparte dalla prima.</p></div>
+      <div class="card flush"><ul class="list">${row('vocabDrill', I.cards, 'Ripassa con gli esercizi', canDrill ? `${Math.min(10, nDue)} parole: riconoscile e abbinale` : 'Nessuna parola da ripassare adesso', !canDrill)}${row('practice', I.match, 'Allenati sulle parole', 'Le parole degli argomenti aperti, in coppie e a scelta', false, 'data-m="parole"')}</ul></div></section>
+    <section class="sec"><h2 class="sec-title">Le tue parole</h2>
+      <div class="card stack">
+        <div class="field"><label for="wq">Cerca in latino o in italiano</label><input id="wq" class="typed" type="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="es. rosa, amare" value="${esc(WF.q)}"></div>
+        <div class="seg" role="group" aria-label="Quali parole mostrare">${WORD_STATES.map(([v, l]) => `<button data-act="wordFilter" data-v="${v}" aria-pressed="${WF.st === v}">${l}</button>`).join('')}</div>
+        <div class="field"><label for="wk">Tipo di parola</label><div class="select"><select id="wk">${WORD_KINDS.map(([v, l]) => `<option value="${v}" ${WF.k === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
+        <p class="note" id="wCount" role="status">${list.count}</p>
+      </div>
+      <div id="wordList" class="stack-lg">${list.html}</div></section>
+    ${searchSec}`;
+}
+// la scheda di una parola: paradigma, significato, dove si è incontrata, ripasso, una frase d'esempio già alla portata
+function exampleFor(uid, met) {
+  const T = sel();
+  const sc = { T, formOK: LS.makeFormOK(T, null, null), vocab: new Set(met.keys()), maxNew: 0, newOK: () => false };
+  const cands = BANK.filter((s) => s.tokens.some((t) => t && t.uid === uid) && LS.sentenceFits(s, sc));
+  return cands.sort((a, b) => SN.wordCount(a.la) - SN.wordCount(b.la))[0] || null;
+}
+function wordSheet(uid) {
+  const e = ent(uid);
+  const met = metWords();
+  if (!e || !met.has(uid)) return;
+  const f = met.get(uid), v = S.vocab[uid];
+  const left = v ? daysBetween(dayKey(), v.due) : 0;
+  const rip = !v ? 'Non l’hai ancora ripassata.' : left <= 0 ? `Scatola ${v.box} di 5: da ripassare oggi.` : `Scatola ${v.box} di 5: torna fra ${left} ${left === 1 ? 'giorno' : 'giorni'}.`;
+  const ex = exampleFor(uid, met);
+  openSheet('La parola', `<div class="stack"><p class="word-head" lang="la">${esc(lemmaOf(e))}</p><p class="word-mean">${esc(e.it)}</p><p class="note">${esc(e.cls)}</p></div>
+    ${ex ? `<div class="stack"><h3 class="group-title">Esempio</h3><div class="exline"><span class="la" lang="la">${esc(laShow(ex))}</span><span class="muted">${esc(ex.it[0])}</span></div></div>` : ''}
+    <div class="stack"><h3 class="group-title">Nel tuo percorso</h3><p>Incontrata nell’unità ${ROMAN(f.ui + 1)}, «${esc(f.unit.title)}», lezione «${esc(f.lesson.title)}».</p><div class="row">${pips(uid)}<span class="note">${esc(rip)}</span></div></div>
+    <div class="row"><button class="tool" data-act="speakText" data-w="${esc(e.head)}">${I.sound}Ascolta</button>${e.k !== 'i' ? `<button class="tool" data-act="paradigm" data-u="${esc(e.uid)}">${I.table}Paradigma</button>` : ''}${S.settings.online ? wikiLink(e.head) : ''}</div>`);
 }
 let flashCur = null;
 function bindWords() {
@@ -1412,6 +1513,9 @@ const ACT = {
   import: () => { const i = document.createElement('input'); i.type = 'file'; i.accept = 'application/json,.json'; i.onchange = () => { const f = i.files[0]; if (!f) return; f.text().then((t) => { try { const d = JSON.parse(t); if (d && d.v === 2 && d.course) applyRestore(d); else toast('Il file non è una copia di Verto.'); } catch (e) { toast('Il file non è una copia di Verto.'); } }); }; i.click(); },
   reset: () => askConfirm('Cancellare tutti i progressi da questo dispositivo?', 'Cancella', () => { try { localStorage.removeItem(KEY); } catch (e) { /* ignora */ } S = DEFAULT(); onb = null; applyTheme(); render(); }, true, 'sad'),
   search: () => searchForm(),
+  vocabDrill: () => startVocabDrill(),
+  wordSheet: (el) => wordSheet(el.dataset.u),
+  wordFilter: (el) => { WF.st = el.dataset.v; $$('[data-act="wordFilter"]').forEach((b) => b.setAttribute('aria-pressed', b === el)); updateWordList(); },
   flashShow: () => { flashCur.shown = true; drawFlash(); },
   flash: (el) => { srs(flashCur.e.uid, el.dataset.v === '1'); if (el.dataset.v === '1') addXP(1); save(); bindWords(); },
   onbNext: () => { if (onb.step === 0) onb.name = ($('#nm').value || '').trim().slice(0, 24); onb.step++; drawOnb(); },
@@ -1437,6 +1541,7 @@ document.addEventListener('click', (ev) => {
 document.addEventListener('change', (ev) => {
   const t = ev.target;
   if (t.id === 'pracUnit') { S.prac.unit = t.value; save(); return; }
+  if (t.id === 'wk') { WF.k = t.value; updateWordList(); return; }
   if (!t.dataset.set) return;
   const k = t.dataset.set;
   if (k === 'input') S.settings.input = t.checked ? 'keys' : 'tiles';
@@ -1461,7 +1566,7 @@ document.addEventListener('keydown', (ev) => {
     else if (!SES.cur.answered) act('check');
   }
 });
-document.addEventListener('input', (ev) => { if (ev.target.id === 'typed') { const b = $('#checkBtn'); if (b) b.disabled = !ev.target.value.trim(); } });
+document.addEventListener('input', (ev) => { if (ev.target.id === 'wq') { WF.q = ev.target.value.trim(); updateWordList(); return; } if (ev.target.id === 'typed') { const b = $('#checkBtn'); if (b) b.disabled = !ev.target.value.trim(); } });
 window.addEventListener('resize', closePop);
 window.addEventListener('scroll', () => { closePop(); updateJump(); }, { passive: true });
 function updateJump() {

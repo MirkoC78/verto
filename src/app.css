@@ -451,6 +451,15 @@ html.ov-open { overflow: hidden; }
 @media (prefers-reduced-motion: no-preference) { .fx-in { animation: fxin .22s var(--ease); } }
 @keyframes fxin { from { opacity: 0; transform: translateY(var(--sp-2)); } }
 
+/* ---------- Lessico ---------- */
+.group-title { font-size: var(--fs-sm); font-weight: 600; color: var(--muted); }
+.rowbtn.word .txt b { white-space: normal; }
+.pips { display: inline-flex; align-items: center; gap: var(--sp-1); flex: none; }
+.pips i { width: var(--sp-2); height: var(--sp-2); border-radius: var(--r-pill); border: 2px solid var(--line-strong); }
+.pips i.on { border-color: var(--pri); background: var(--pri); }
+.word-head { font-family: var(--f-la); font-style: italic; font-size: var(--fs-2xl); line-height: var(--lh-tight); }
+.word-mean { font-size: var(--fs-lg); }
+
 /* ---------- Meno movimento, se richiesto dal sistema ---------- */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0s !important; animation-duration: 0s !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }

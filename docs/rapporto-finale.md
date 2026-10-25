@@ -12,8 +12,11 @@ Motore morfologico, lessico, frasi, teoria e generatore di Verto 1 sono stati co
   nessuna nelle prove; ogni lezione dichiara le forme ammesse.
 - **Palestra**: Versione, Retroversione e Frasi nuove con quattro livelli (Facile, Media, Difficile, Esperto); allenamento su misura per argomento
   e tipo di esercizio, con «solo parole già incontrate»; ripasso degli errori; alfabeto e pronuncia.
-- **Teoria e lessico**: 25 argomenti con tabelle dal motore, metodo in otto passi, lessico a ripetizione dilazionata, ricerca di una forma con analisi
-  e collegamento facoltativo al Wikizionario.
+- **Teoria e lessico**: 25 argomenti con tabelle dal motore, metodo in otto passi. La sezione Lessico raccoglie solo le parole già incontrate
+  (mai quelle delle lezioni ancora da fare), divise per unità, con ricerca in latino o in italiano, filtri (da ripassare, imparate, tipo di parola)
+  e una scheda per ogni parola: paradigma, significato, lezione in cui compare, scatola del ripasso, una frase d'esempio già alla portata,
+  ascolto, paradigma completo e collegamento facoltativo al Wikizionario. Il ripasso del giorno si fa a schede o con esercizi
+  (riconoscere nei due sensi e abbinare), con ripetizione dilazionata in cinque scatole; resta la ricerca di una forma con analisi.
 - **Salvataggio**: automatico dopo ogni risposta; codice di salvataggio (40–104 caratteri, controllo a 16 bit, errori di battitura riconosciuti
   con un messaggio chiaro) che conserva anche le stelle delle unità richiuse; copia su file; ripristino anche dal benvenuto; promemoria dopo la prima
   lezione e poi ogni settimana.
