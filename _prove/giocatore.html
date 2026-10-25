@@ -25,7 +25,7 @@ f.addEventListener('load', () => {
     s.onload = () => w.giocaTutto({ da: +(q.get('da') || 0), a: q.get('a') == null ? undefined : +q.get('a') }).then(() => w.controllaViste()).then(show);
     w.document.head.append(s);
   };
-  const show = (R) => { document.getElementById('out').textContent = JSON.stringify({ lezioni: R.lezioni, esercizi: R.esercizi, tipi: R.tipi, errori: R.errori, console: R.console, fuori: R.fuori.slice(0, 40) }, null, 1); };
+  const show = (R) => { document.getElementById('out').textContent = JSON.stringify({ lezioni: R.lezioni, esercizi: R.esercizi, tipi: R.tipi, errori: R.errori, console: R.console, fuori: R.fuori.slice(0, 40), accessibilita: R.a11y }, null, 1); };
   setInterval(() => { if (w.__giocatore && !w.__giocatore.fatto) show(w.__giocatore); }, 2000);
   go();
 });

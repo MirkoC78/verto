@@ -355,10 +355,21 @@ function buildReview() {
   return shuffle(items);
 }
 function begin(o) {
-  SES = Object.assign({ backY: window.scrollY, i: 0, combo: 0, best: 0, xp: 0, ok: 0, ko: 0, start: Date.now(), cur: null, done: false, requeued: 0, shownTheory: {} }, o);
+  const op = document.activeElement;
+  SES = Object.assign({ opener: op && op.dataset ? { act: op.dataset.act, i: op.dataset.i, m: op.dataset.m } : null, backY: window.scrollY, i: 0, combo: 0, best: 0, xp: 0, ok: 0, ko: 0, start: Date.now(), cur: null, done: false, requeued: 0, shownTheory: {} }, o);
   openOverlay();
   renderItem();
 }
+// solo lo strato più in alto (finestra, foglio, lezione, app) risponde alla tastiera e ai lettori di schermo
+function layers() {
+  const L = ['#app', '#ov', '#sheet', '#modal'].map((s) => $(s)).filter(Boolean);
+  L.forEach((el, i) => { el.inert = i < L.length - 1; });
+  const skip = $('.skip'); if (skip) skip.inert = L.length > 1;
+}
+// chiudendo un foglio o una finestra, il focus torna al pulsante che li aveva aperti
+const focusBack = [];
+function rememberFocus() { focusBack.push(document.activeElement); }
+function restoreFocus() { const el = focusBack.pop(); if (el && el.isConnected && !el.closest('[inert]')) el.focus({ preventScroll: true }); }
 function openOverlay() {
   closeOverlay();
   const ov = document.createElement('div');
@@ -366,8 +377,9 @@ function openOverlay() {
   ov.innerHTML = `<div class="ov-head"><button class="iconbtn" data-act="quit" aria-label="Chiudi la lezione">${I.close}</button><progress class="bar" id="ovProg" max="100" value="0" aria-label="Avanzamento della lezione"></progress><div class="combo" id="combo" aria-live="polite"></div></div><div class="ov-inner"><div class="ov-body" id="ovBody"></div></div><div class="ov-foot" id="ovFootWrap"><div class="foot-in" id="ovFoot"></div></div>`;
   document.body.appendChild(ov);
   document.documentElement.classList.add('ov-open');
+  layers();
 }
-function closeOverlay() { const o = $('#ov'); if (o) o.remove(); document.documentElement.classList.remove('ov-open'); closePop(); }
+function closeOverlay() { const o = $('#ov'); if (o) o.remove(); document.documentElement.classList.remove('ov-open'); closePop(); layers(); }
 function setProgress() { const b = $('#ovProg'); if (b) b.value = Math.max(3, Math.round(Math.min(1, SES.i / SES.items.length) * 100)); }
 function setCombo() { const c = $('#combo'); if (c) c.innerHTML = SES.combo >= 2 ? I.flame + '<span>' + SES.combo + '</span><span class="sr"> risposte giuste di fila</span>' : ''; }
 
@@ -389,13 +401,15 @@ function renderItem() {
   $('#ovFootWrap').className = 'ov-foot';
   renderFoot();
   if (it.type === 'la_it' || it.type === 'it_la') refreshAnswer();
-  const t = $('#typed'); if (t && !matchMedia('(pointer: coarse)').matches) t.focus({ preventScroll: true });
+  const t = $('#typed');
+  if (t && !matchMedia('(pointer: coarse)').matches) t.focus({ preventScroll: true });
+  else if (it.type !== 'teach') { const h = $('#ovBody .prompt'); if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); } }
   $('.ov-inner').scrollTop = 0;
 }
 const exHead = (title, lemma) => `<div class="ex-head">${SES.cur.tagsHtml || ''}<h2 class="prompt">${title}${lemma ? `<span class="lemma" lang="la">${esc(lemma)}</span>` : ''}</h2></div>`;
 function renderFoot() {
   const it = SES.cur.it;
-  if (it.type === 'teach') { $('#ovFoot').innerHTML = `<button class="btn big block" data-act="next" id="nextBtn">Continua</button>`; setTimeout(() => { const n = $('#nextBtn'); if (n) n.focus({ preventScroll: true }); }, 60); return; }
+  if (it.type === 'teach') { $('#ovFoot').innerHTML = `<button class="btn big block" data-act="next" id="nextBtn" aria-describedby="ovBody">Continua</button>`; setTimeout(() => { const n = $('#nextBtn'); if (n) n.focus({ preventScroll: true }); }, 60); return; }
   if (it.type === 'abbina') { $('#ovFoot').innerHTML = `<p class="foot-hint">Tocca una parola latina, poi il suo significato.</p>`; return; }
   $('#ovFoot').innerHTML = `<button class="btn big block" data-act="check" id="checkBtn" ${CHOICE.includes(it.type) ? 'disabled' : ''}>Controlla</button>`;
 }
@@ -435,7 +449,7 @@ function latinLine(s, o = {}) {
     return `<button class="w${verb ? ' vb' : ''}${nw ? ' new' : ''}" data-act="word" data-i="${i}" lang="la"${nw ? ` aria-label="parola nuova: ${w}"` : ''}>${w}</button>`;
     void e;
   });
-  return `<p class="latin-line" lang="la">${html}</p>${fresh.size ? '<p class="note"><span class="tag new">Nuova</span> Tocca la parola evidenziata per scoprire che cosa significa.</p>' : ''}`;
+  return `<p class="latin-line" id="exText" lang="la">${html}</p>${fresh.size ? '<p class="note"><span class="tag new">Nuova</span> Tocca la parola evidenziata per scoprire che cosa significa.</p>' : ''}`;
 }
 const toolBtn = (act, icon, label, extra = '') => `<button class="iconbtn outline" data-act="${act}" aria-label="${label}" title="${label}" ${extra}>${icon}</button>`;
 function inputToggle() { const tiles = SES.cur.inputMode === 'tiles'; return toolBtn('toggleInput', tiles ? I.keys : I.tiles, tiles ? 'Rispondi scrivendo' : 'Rispondi con le tessere'); }
@@ -447,7 +461,7 @@ function renderLaIt(it) {
 }
 function renderItLa(it) {
   const nw = (it.newWords || []).length ? `<p class="note"><span class="tag new">Nuova</span> Ti servirà una parola nuova: ${it.newWords.map((u) => { const e = ent(u); return e ? `<span class="la" lang="la">${esc(headOf(e))}</span> = ${esc(shortM(e.it))}` : esc(u); }).join(', ')}.</p>` : '';
-  return `${exHead('Traduci in latino')}${say(`<span class="it-line">${esc(it.s.it[0])}</span>`, 'idle', 64)}${nw}
+  return `${exHead('Traduci in latino')}${say(`<span class="it-line" id="exText">${esc(it.s.it[0])}</span>`, 'idle', 64)}${nw}
     ${toolsRow('')}
     <div id="ansWrap" class="stack-lg">${answerArea(it)}</div>`;
 }
@@ -455,10 +469,10 @@ function answerArea(it) {
   const c = SES.cur;
   const latin = it.type === 'it_la';
   if (c.inputMode === 'keys') {
-    return `<label class="sr" for="typed">La tua traduzione</label><textarea id="typed" class="typed${latin ? ' la' : ''}" rows="2" lang="${latin ? 'la' : 'it'}" autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false" placeholder="${latin ? 'Scrivi in latino…' : 'Scrivi la traduzione…'}"></textarea>${latin && S.settings.quant ? macronKeys() : ''}`;
+    return `<label class="sr" for="typed">La tua traduzione</label><textarea id="typed" class="typed${latin ? ' la' : ''}" aria-describedby="exText" rows="2" lang="${latin ? 'la' : 'it'}" autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false" placeholder="${latin ? 'Scrivi in latino…' : 'Scrivi la traduzione…'}"></textarea>${latin && S.settings.quant ? macronKeys() : ''}`;
   }
   if (!c.tiles) c.tiles = latin ? latinTiles(it.s) : italianTiles(it.s);
-  return `<div class="answer" id="answer" aria-label="La tua risposta"></div><div class="bank" id="bank">${c.tiles.map((t, k) => `<button class="tile${latin ? ' la' : ''}" data-act="tile" data-k="${k}" ${latin ? 'lang="la"' : ''}>${esc(t.label)}</button>`).join('')}</div>`;
+  return `<div class="answer" id="answer" role="group" aria-label="La tua risposta"></div><div class="bank" id="bank" role="group" aria-label="Tessere da usare">${c.tiles.map((t, k) => `<button class="tile${latin ? ' la' : ''}" data-act="tile" data-k="${k}" ${latin ? 'lang="la"' : ''}>${esc(t.label)}</button>`).join('')}</div>`;
 }
 const macronKeys = () => `<div class="ex-tools" role="group" aria-label="Vocali lunghe">${['ā', 'ē', 'ī', 'ō', 'ū'].map((v) => `<button type="button" class="tool" data-act="macron" data-v="${v}" aria-label="${v}, vocale lunga">${v}</button>`).join('')}</div>`;
 // tessere latine: le tessere della frase (preposizione e nome restano insieme) e altre forme delle stesse parole
@@ -511,12 +525,12 @@ function refreshAnswer() {
   const a = $('#answer'); if (!a) return;
   const latin = c.it.type === 'it_la';
   a.innerHTML = c.chosen.map((k, j) => `<button class="tile${latin ? ' la' : ''}" data-act="untile" data-j="${j}" ${latin ? 'lang="la"' : ''}>${esc(c.tiles[k].label)}</button>`).join('');
-  $$('#bank .tile').forEach((b) => b.classList.toggle('used', c.chosen.includes(+b.dataset.k)));
+  $$('#bank .tile').forEach((b) => { const u = c.chosen.includes(+b.dataset.k); b.classList.toggle('used', u); b.setAttribute('aria-disabled', u); });
   if (btn) btn.disabled = !c.chosen.length;
 }
 const optKey = (k) => `<span class="k" aria-hidden="true">${k + 1}</span>`;
 function optsHtml(list, label = (x) => esc(x), latin = false, two = false) {
-  return `<div class="opts${two ? ' two' : ''}">${list.map((o, k) => `<button class="opt${latin ? ' la' : ''}" data-act="pick" data-k="${k}" ${latin ? 'lang="la"' : ''}>${optKey(k)}<span>${label(o)}</span></button>`).join('')}</div>`;
+  return `<div class="opts${two ? ' two' : ''}">${list.map((o, k) => `<button class="opt${latin ? ' la' : ''}" data-act="pick" data-k="${k}" aria-pressed="false" ${latin ? 'lang="la"' : ''}>${optKey(k)}<span>${label(o)}</span></button>`).join('')}</div>`;
 }
 const showForm = (f, q) => (S.settings.quant && q ? q : f);
 function renderAnalizza(it) {
@@ -526,8 +540,8 @@ function renderAnalizza(it) {
 }
 function renderScrivi(it) {
   const e = ent(it.uid);
-  return `${exHead('Scrivi la forma')}<div class="card stack"><span class="la bigform" lang="la">${esc(lemmaOf(e))}</span><b>${esc(it.desc)}</b><span class="note">${esc(e.it)}</span></div>
-    <label class="sr" for="typed">La forma in latino</label><input id="typed" class="typed la" lang="la" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Scrivi la forma…">${S.settings.quant ? macronKeys() : ''}`;
+  return `${exHead('Scrivi la forma')}<div class="card stack" id="exText"><span class="la bigform" lang="la">${esc(lemmaOf(e))}</span><b>${esc(it.desc)}</b><span class="note">${esc(e.it)}</span></div>
+    <label class="sr" for="typed">La forma in latino</label><input id="typed" class="typed la" aria-describedby="exText" lang="la" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Scrivi la forma…">${S.settings.quant ? macronKeys() : ''}`;
 }
 function renderCompleta(it) {
   return `${exHead('Completa la frase')}<div class="stack">${latinLine(it.s, { blank: it.idx, newWords: it.newWords })}<p class="muted">${esc(it.s.it[0])}</p></div>${optsHtml(it.options.map((o) => quantOf(it.s.tokens[it.idx].uid, o)), esc, true, true)}`;
@@ -551,7 +565,7 @@ function renderAccorda(it) {
 function renderAbbina(it) {
   const c = SES.cur;
   c.left = shuffle(it.pairs.map((p, i) => i)); c.right = shuffle(it.pairs.map((p, i) => i)); c.matched = new Set(); c.mist = 0; c.selL = null; c.selR = null;
-  return `${exHead('Abbina le coppie')}<div class="match"><div class="col">${c.left.map((i) => `<button class="la" lang="la" data-act="mL" data-i="${i}">${esc(S.settings.quant ? it.pairs[i].lq : it.pairs[i].la)}</button>`).join('')}</div><div class="col">${c.right.map((i) => `<button data-act="mR" data-i="${i}">${esc(it.pairs[i].it)}</button>`).join('')}</div></div>`;
+  return `${exHead('Abbina le coppie')}<div class="match"><div class="col">${c.left.map((i) => `<button class="la" lang="la" data-act="mL" data-i="${i}" aria-pressed="false">${esc(S.settings.quant ? it.pairs[i].lq : it.pairs[i].la)}</button>`).join('')}</div><div class="col">${c.right.map((i) => `<button data-act="mR" data-i="${i}" aria-pressed="false">${esc(it.pairs[i].it)}</button>`).join('')}</div></div>`;
 }
 const wordQ = (it) => (S.settings.quant || ['quantita', 'accento', 'sillabe'].includes(it.type) ? it.q : it.word);
 function renderLettura(it) { return `${exHead('Come si legge?')}<p class="bigform" lang="la">${esc(wordQ(it))}</p><p class="subline">${esc(shortM(ent(it.uid).it))}</p>${optsHtml(it.options, esc, false, true)}`; }
@@ -596,13 +610,13 @@ function quantWarnings(typedWords, refWords) {
 function pickOption(k) {
   const c = SES.cur; if (!c || c.answered) return;
   c.picked = k;
-  $$('#ovBody .opt').forEach((b) => b.classList.toggle('sel', +b.dataset.k === k));
+  $$('#ovBody .opt').forEach((b) => { b.classList.toggle('sel', +b.dataset.k === k); b.setAttribute('aria-pressed', +b.dataset.k === k); });
   sfx.tap();
   const btn = $('#checkBtn'); if (btn) btn.disabled = false;
 }
 function markOptions(ok, isRight) {
   $$('#ovBody .opt').forEach((b, k) => {
-    b.disabled = true; b.classList.remove('sel');
+    b.disabled = true; b.classList.remove('sel'); b.removeAttribute('aria-pressed');
     if (isRight(k)) b.classList.add('right');
     else if (k === SES.cur.picked && !ok) b.classList.add('wrong');
   });
@@ -805,7 +819,13 @@ function finishSession() {
   $('#ovFoot').innerHTML = `<div class="btns">${again}<button class="btn big ${passed ? 'ok' : ''}" data-act="endSession">Continua</button></div>`;
   setTimeout(() => { const b = $('#ovFoot .btn:last-child'); if (b) b.focus(); }, 60);
 }
-function endSession() { const y = SES ? SES.backY : 0; SES = null; closeOverlay(); render(); window.scrollTo(0, y); flushToasts(); }
+function endSession() {
+  const y = SES ? SES.backY : 0, op = SES && SES.opener;
+  SES = null; closeOverlay(); render(); window.scrollTo(0, y);
+  const back = op && op.act && ($(`[data-act="${op.act}"]${op.i != null ? `[data-i="${op.i}"]` : ''}${op.m ? `[data-m="${op.m}"]` : ''}`) || $('.resume .btn'));
+  (back || $('#main')).focus({ preventScroll: true });
+  flushToasts();
+}
 
 /* ---------- Ripetizione dilazionata ---------- */
 const BOX_DAYS = [0, 1, 3, 7, 14, 30];
@@ -844,24 +864,28 @@ function wordPop(btn, tok) {
 const wikiLink = (w) => `<a class="tool" href="https://it.wiktionary.org/wiki/${encodeURIComponent(E.plain(w).toLowerCase())}" target="_blank" rel="noopener noreferrer">${I.globe}Wikizionario</a>`;
 function openSheet(title, html) {
   closeSheet();
+  rememberFocus();
   const bg = document.createElement('div');
   bg.className = 'sheet-bg'; bg.id = 'sheet';
   bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="sheet-head"><h2>${esc(title)}</h2><button class="iconbtn" data-act="closeSheet" aria-label="Chiudi">${I.close}</button></div><div class="sheet-body">${html}</div></div>`;
   bg.addEventListener('click', (ev) => { if (ev.target === bg) closeSheet(); });
   document.body.appendChild(bg);
+  layers();
   setTimeout(() => { const b = $('#sheet .iconbtn'); if (b) b.focus(); }, 30);
 }
-function closeSheet() { const s = $('#sheet'); if (s) s.remove(); }
+function closeSheet() { const s = $('#sheet'); if (!s) return; s.remove(); layers(); restoreFocus(); }
 function showModal(html) {
   closeModal();
+  rememberFocus();
   const bg = document.createElement('div');
   bg.className = 'modal-bg'; bg.id = 'modal';
   bg.innerHTML = `<div class="modal" role="dialog" aria-modal="true">${html}</div>`;
   bg.addEventListener('click', (ev) => { if (ev.target === bg) closeModal(); });
   document.body.appendChild(bg);
+  layers();
   setTimeout(() => { const b = $('#modal .btn:last-of-type') || $('#modal button'); if (b) b.focus(); }, 30);
 }
-function closeModal() { const m = $('#modal'); if (m) m.remove(); }
+function closeModal() { const m = $('#modal'); if (!m) return; m.remove(); layers(); restoreFocus(); }
 let modalCb = null;
 function askConfirm(text, okLabel, cb, danger, mood = 'think') { modalCb = cb; showModal(`${guide(mood, 88)}<h2>${esc(text)}</h2><div class="btns"><button class="btn ghost" data-act="closeModal">Annulla</button><button class="btn ${danger ? 'err' : ''}" data-act="modalOk">${esc(okLabel)}</button></div>`); }
 function askText(label, value, cb) { modalCb = cb; showModal(`<div class="field"><label for="mdIn">${esc(label)}</label><input id="mdIn" class="typed" maxlength="24" autocomplete="off" value="${esc(value)}"></div><div class="btns"><button class="btn ghost" data-act="closeModal">Annulla</button><button class="btn" data-act="modalOk">Salva</button></div>`); setTimeout(() => { const i = $('#mdIn'); if (i) i.focus(); }, 40); }
@@ -1054,7 +1078,7 @@ function viewPath() {
   const greet = S.name ? `Salvē, ${esc(S.name)}!` : 'Salvē!';
   const ul = cf.unit.lessons.length, li = cf.li + 1;
   const doneInUnit = cf.unit.lessons.filter((l) => S.course.stars[l.id]).length;
-  let h = `<section class="resume" aria-label="Lezione attuale"><div class="resume-top">${guide('happy', 76)}<div class="resume-txt"><p class="note"><span lang="la">${greet}</span> ${S.course.times[cf.lesson.id] ? 'Ripassiamo questa lezione.' : 'Si riparte da qui.'}</p><h2>${esc(cf.lesson.title)}</h2><p class="note">Unità ${ROMAN(cf.ui + 1)}, ${esc(cf.unit.title)}: ${cf.lesson.test ? 'prova finale' : `lezione ${li} di ${ul}`}</p></div></div>
+  let h = `<h1 class="sr">Percorso</h1><section class="resume" aria-label="Lezione attuale"><div class="resume-top">${guide('happy', 76)}<div class="resume-txt"><p class="note"><span lang="la">${greet}</span> ${S.course.times[cf.lesson.id] ? 'Ripassiamo questa lezione.' : 'Si riparte da qui.'}</p><h2>${esc(cf.lesson.title)}</h2><p class="note">Unità ${ROMAN(cf.ui + 1)}, ${esc(cf.unit.title)}: ${cf.lesson.test ? 'prova finale' : `lezione ${li} di ${ul}`}</p></div></div>
     <progress class="bar pri" max="${ul}" value="${doneInUnit}" aria-label="Lezioni completate nell’unità: ${doneInUnit} su ${ul}"></progress>
     <div class="btns"><button class="btn big" data-act="startLesson" data-i="${cur}">${cf.lesson.test ? 'Inizia la prova' : S.course.times[cf.lesson.id] ? 'Ripeti' : 'Continua'}</button></div></section>`;
   h += `<div class="only-narrow sec">${goalCard()}</div>`;
@@ -1327,7 +1351,7 @@ const ACT = {
   pracLevel: (el) => { S.prac.level = el.dataset.v; save(); rerenderKeep(`[data-act="pracLevel"][data-v="${el.dataset.v}"]`); },
   pracType: (el) => { S.prac.type = el.dataset.v; save(); rerenderKeep(`[data-act="pracType"][data-v="${el.dataset.v}"]`); },
   topic: (el) => { VIEW = 'topic:' + el.dataset.t; openStone = null; render(); window.scrollTo(0, 0); },
-  quit: () => { const go = () => { const y = SES ? SES.backY : 0; SES = null; closeOverlay(); render(); window.scrollTo(0, y); }; if (SES && SES.i > 0 && !SES.done) askConfirm('Vuoi davvero uscire? I progressi di questa lezione andranno persi.', 'Esci', go, true, 'sad'); else go(); },
+  quit: () => { const go = () => endSession(); if (SES && SES.i > 0 && !SES.done) askConfirm('Vuoi davvero uscire? I progressi di questa lezione andranno persi.', 'Esci', go, true, 'sad'); else go(); },
   modalOk: () => { const i = $('#mdIn'); const v = i ? i.value : true; const cb = modalCb; modalCb = null; closeModal(); if (cb) cb(v); },
   check: () => doCheck(),
   next: () => { SES.i++; renderItem(); },
@@ -1337,8 +1361,8 @@ const ACT = {
   tile: (el) => { const c = SES.cur; if (c.answered) return; const k = +el.dataset.k; if (c.chosen.includes(k)) return; c.chosen.push(k); sfx.tap(); refreshAnswer(); },
   untile: (el) => { const c = SES.cur; if (c.answered) return; c.chosen.splice(+el.dataset.j, 1); refreshAnswer(); },
   pick: (el) => pickOption(+el.dataset.k),
-  mL: (el) => { const c = SES.cur; if (c.answered || el.disabled) return; $$('[data-act="mL"]').forEach((b) => b.classList.remove('sel')); el.classList.add('sel'); c.selL = +el.dataset.i; sfx.tap(); matchStep(); },
-  mR: (el) => { const c = SES.cur; if (c.answered || el.disabled) return; $$('[data-act="mR"]').forEach((b) => b.classList.remove('sel')); el.classList.add('sel'); c.selR = +el.dataset.i; sfx.tap(); matchStep(); },
+  mL: (el) => { const c = SES.cur; if (c.answered || el.disabled) return; $$('[data-act="mL"]').forEach((b) => { b.classList.remove('sel'); b.setAttribute('aria-pressed', 'false'); }); el.classList.add('sel'); el.setAttribute('aria-pressed', 'true'); c.selL = +el.dataset.i; sfx.tap(); matchStep(); },
+  mR: (el) => { const c = SES.cur; if (c.answered || el.disabled) return; $$('[data-act="mR"]').forEach((b) => { b.classList.remove('sel'); b.setAttribute('aria-pressed', 'false'); }); el.classList.add('sel'); el.setAttribute('aria-pressed', 'true'); c.selR = +el.dataset.i; sfx.tap(); matchStep(); },
   self: (el) => { const c = SES.cur; const d = c.selfData; c.answered = false; if (el.dataset.v === '1' && c.it.s) c.it.s.it.push(d.ans); finalize({ ok: el.dataset.v === '1', sol: d.sol, given: d.ans, typed: true, self: true }); },
   toggleInput: (el) => { const c = SES.cur; if (c.answered) return; c.inputMode = c.inputMode === 'tiles' ? 'keys' : 'tiles'; c.chosen = []; $('#ansWrap').innerHTML = answerArea(c.it); el.outerHTML = inputToggle(); refreshAnswer(); const t = $('#typed'); if (t) t.focus({ preventScroll: true }); },
   macron: (el) => { const t = $('#typed'); if (!t || t.readOnly) return; const a = t.selectionStart ?? t.value.length; const before = t.value.slice(0, a); const last = before.slice(-1); const base = { 'ā': 'a', 'ē': 'e', 'ī': 'i', 'ō': 'o', 'ū': 'u' }[el.dataset.v]; const repl = last.toLowerCase() === base ? (last === base ? el.dataset.v : el.dataset.v.toUpperCase()) : null; t.value = repl ? before.slice(0, -1) + repl + t.value.slice(a) : before + el.dataset.v + t.value.slice(a); const p = repl ? a : a + 1; t.setSelectionRange(p, p); t.focus(); const b = $('#checkBtn'); if (b) b.disabled = !t.value.trim(); },

@@ -34,6 +34,45 @@
       R.fuori.push(`${where}: <${worst.tagName.toLowerCase()} class="${worst.className && worst.className.baseVal == null ? worst.className : ''}"> largo ${Math.round(r.width)}px, esce di ${Math.round(r.right - W)}px: «${String(worst.textContent).trim().slice(0, 60)}» in «${String((worst.parentElement || worst).textContent).trim().slice(0, 80)}»`);
     }
   }
+  // accessibilità dello strato attivo: nomi, lingua del latino, titoli, bersagli, identificatori
+  R.a11y = {};
+  const note = (msg, where) => { if (!R.a11y[msg]) R.a11y[msg] = where; };
+  const nameOf = (el) => {
+    if (el.getAttribute('aria-label')) return el.getAttribute('aria-label');
+    const lb = el.getAttribute('aria-labelledby'); if (lb) return lb.split(' ').map((id) => (document.getElementById(id) || {}).textContent || '').join(' ').trim();
+    if (el.id) { const l = document.querySelector(`label[for="${el.id}"]`); if (l) return l.textContent.trim(); }
+    const wrap = el.closest('label'); if (wrap && wrap !== el && wrap.textContent.trim()) return wrap.textContent.trim();
+    return (el.textContent || '').trim() || el.getAttribute('title') || '';
+  };
+  function a11y(where) {
+    const top = ['#modal', '#sheet', '#ov', '#app'].map((s) => $(s)).find(Boolean);
+    if (!top) return;
+    for (const el of top.querySelectorAll('button, a[href], input, select, textarea')) {
+      if (el.closest('[hidden]') || el.type === 'hidden') continue;
+      if (!nameOf(el)) note(`controllo senza nome: <${el.tagName.toLowerCase()} class="${el.className}" data-act="${el.dataset.act || ''}">`, where);
+      const r = el.getBoundingClientRect();
+      const inline = el.matches('.latin-line .w, .theory a, .lesson-text a');
+      if (r.width && !inline && (r.width < 24 || r.height < 24)) note(`bersaglio sotto 24 px: ${el.className || el.tagName} ${Math.round(r.width)}×${Math.round(r.height)}`, where);
+    }
+    for (const s of top.querySelectorAll('svg')) {
+      if (s.closest('[aria-hidden="true"]') || s.getAttribute('aria-hidden') === 'true') continue;
+      if (!(s.getAttribute('role') === 'img' && s.getAttribute('aria-label'))) note(`disegno senza testo alternativo né aria-hidden: ${s.getAttribute('class') || 'svg'}`, where);
+    }
+    for (const el of top.querySelectorAll('.la, .latin-line, .bigform, .phrase')) {
+      if (!el.closest('[lang="la"]') && el.textContent.trim()) note(`testo latino senza lang="la": ${el.className} «${el.textContent.trim().slice(0, 30)}»`, where);
+    }
+    const hs = [...top.querySelectorAll('h1, h2, h3, h4')].filter((h) => !h.closest('[hidden]'));
+    if (top.id === 'app' && !hs.some((h) => h.tagName === 'H1')) note('vista senza titolo di primo livello', where);
+    let prev = top.id === 'app' ? 0 : 1;
+    for (const h of hs) { const lv = +h.tagName[1]; if (prev && lv > prev + 1) note(`salto di livello nei titoli: h${prev} → h${lv} «${h.textContent.trim().slice(0, 30)}»`, where); prev = lv; }
+    const ids = [...document.querySelectorAll('[id]')].map((e) => e.id);
+    const dup = ids.filter((id, i) => ids.indexOf(id) !== i);
+    if (dup.length) note('identificatori ripetuti: ' + [...new Set(dup)].join(', '), where);
+    // gli strati sotto devono essere inerti
+    const layers = ['#app', '#ov', '#sheet', '#modal'].map((s) => $(s)).filter(Boolean);
+    layers.slice(0, -1).forEach((l) => { if (!l.inert) note(`lo strato ${l.id} resta raggiungibile sotto ${layers[layers.length - 1].id}`, where); });
+  }
+  window.__a11y = a11y;
   function answer(it, c) {
     const opts = $$('#ovBody .opt');
     const pickIdx = (test) => { const k = it.options.findIndex(test); if (k < 0) throw new Error('nessuna opzione giusta tra ' + JSON.stringify(it.options)); click(opts[k]); };
@@ -68,7 +107,7 @@
   async function playItem(where) {
     const c = A.cur(), it = c.it;
     R.esercizi++; R.tipi[it.type] = (R.tipi[it.type] || 0) + 1;
-    checkWidth(where + ' ' + it.type);
+    checkWidth(where + ' ' + it.type); a11y(where + ' ' + it.type);
     if (it.type === 'teach') { click($('#nextBtn')); return; }
     if (it.type === 'abbina') {
       for (let i = 0; i < it.pairs.length; i++) { click($(`[data-act="mL"][data-i="${i}"]`)); click($(`[data-act="mR"][data-i="${i}"]`)); }
@@ -82,7 +121,7 @@
     const res = A.cur().res;
     if (!res) throw new Error('nessun esito dopo «Controlla» (forse il giudizio a mano)');
     if (!res.ok) R.errori.push(`${where}: risposta giusta respinta (${it.type}) ${it.s ? it.s.la + ' → ' + it.s.it[0] : it.uid || ''} soluzione «${res.sol}»`);
-    checkWidth(where + ' esito ' + it.type);
+    checkWidth(where + ' esito ' + it.type); a11y(where + ' esito ' + it.type);
     click($('#nextBtn'));
   }
   async function playLesson(idx) {
@@ -105,10 +144,10 @@
   window.controllaViste = async function () {
     const S = A.S();
     const views = ['path', 'gym', 'lib', 'words', 'me'].concat(window.VERTO_TOPICS.TOPICS.map((t) => 'topic:' + t.id));
-    for (const v of views) { A.setVIEW(v); await wait(0); checkWidth('vista ' + v); }
+    for (const v of views) { A.setVIEW(v); await wait(0); checkWidth('vista ' + v); a11y('vista ' + v); }
     A.setVIEW('path');
     const sheets = [['methodSheet', null], ['placement', null], ['saveCode', null], ['restoreSheet', null]];
-    for (const [act] of sheets) { const b = document.createElement('button'); b.dataset.act = act; document.body.append(b); b.click(); b.remove(); await wait(0); checkWidth('foglio ' + act); const c = $('[data-act="closeSheet"]'); if (c) c.click(); }
+    for (const [act] of sheets) { const b = document.createElement('button'); b.dataset.act = act; document.body.append(b); b.click(); b.remove(); await wait(0); checkWidth('foglio ' + act); a11y('foglio ' + act); const c = $('[data-act="closeSheet"]'); if (c) c.click(); }
     // paradigmi di alcuni lemmi di ogni tipo
     for (const uid of ['rosa', 'rex', 'res', 'bonus', 'acer', 'amo', 'capio', 'sum', 'possum', 'hortor', 'is', 'qui', 'ego']) {
       if (!window.VertoEngine.BY_UID.get(uid)) continue;

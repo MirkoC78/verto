@@ -82,7 +82,7 @@ a { color: var(--pri-text); }
 .nowrap { white-space: nowrap; }
 .stack { display: grid; gap: var(--sp-3); }
 .stack-lg { display: grid; gap: var(--sp-5); }
-.row { display: flex; align-items: center; gap: var(--sp-3); }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); }
 .grow { flex: 1; min-width: 0; }
 svg { flex: none; }
 /* un'icona senza misura propria prende quella piccola (specificità zero: ogni regola dei componenti vince) */
@@ -142,8 +142,9 @@ svg { flex: none; }
 .btn.ghost { background: var(--surface); color: var(--pri-text); box-shadow: 0 var(--depth) 0 var(--line-strong); border: 1px solid var(--line-strong); }
 .btn.ok { background: var(--good); color: var(--on-state); box-shadow: 0 var(--depth) 0 var(--good-d); }
 .btn.err { background: var(--bad); color: var(--on-state); box-shadow: 0 var(--depth) 0 var(--bad-d); }
-.btns { display: flex; gap: var(--sp-3); }
-.btns > .btn { flex: 1; }
+.btns { display: flex; flex-wrap: wrap; gap: var(--sp-3); }
+/* stessa larghezza finché ci stanno; altrimenti uno sotto l'altro */
+.btns > .btn { flex: 1 1 0; }
 .linkbtn { border: 0; background: none; color: var(--pri-text); font-weight: 600; padding: var(--sp-2) 0; min-height: var(--h-sm); text-decoration: underline; text-underline-offset: 3px; }
 .iconbtn { display: inline-grid; place-items: center; width: var(--h-md); height: var(--h-md); border: 0; border-radius: var(--r-pill); background: none; color: var(--muted); }
 .iconbtn:hover { background: var(--surface-2); }
@@ -252,6 +253,7 @@ progress.bar.good::-moz-progress-bar { background: var(--good); }
 .stone .stars { display: flex; gap: 2px; }
 .stone .stars svg { width: var(--ic-xs); height: var(--ic-xs); color: var(--line-strong); }
 .stone .stars svg.on { color: var(--star); }
+.stone .stars svg:not(.on) path, .bigstars svg:not(.on) path { fill: none; stroke: currentColor; stroke-width: 1.6; }
 .stone.done .mile { border-color: var(--road-done); color: var(--road-done); box-shadow: 0 var(--depth) 0 var(--road-done); }
 /* un solo blocco pieno per schermata: la pietra attuale è contornata, il pieno resta al pulsante «Continua» */
 .stone.current .mile { background: var(--pri-soft); border-color: var(--pri); color: var(--pri-text); box-shadow: 0 var(--depth) 0 var(--pri); }
@@ -296,6 +298,8 @@ html.ov-open { overflow: hidden; }
 .ex-head { display: grid; gap: var(--sp-2); }
 .ex-tags { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
 .prompt { font-size: var(--fs-xl); font-weight: 700; line-height: var(--lh-tight); }
+/* la consegna riceve il focus solo per essere annunciata: non è un controllo */
+.prompt:focus-visible { outline: none; }
 .prompt .lemma { display: block; margin-top: var(--sp-1); font-family: var(--f-la); font-style: italic; font-weight: 400; font-size: var(--fs-lg); color: var(--muted); }
 .latin-line { font-family: var(--f-la); font-size: var(--fs-2xl); line-height: 1.45; }
 .latin-line .w { font: inherit; font-style: italic; color: inherit; background: none; border: 0; padding: 0 1px; border-bottom: 2px dotted var(--line-strong); border-radius: 0; }
@@ -345,7 +349,7 @@ html.ov-open { overflow: hidden; }
 .finish { display: grid; justify-items: center; gap: var(--sp-4); text-align: center; padding-top: var(--sp-5); }
 .finish h2 { font-family: var(--f-display); font-weight: 400; font-size: var(--fs-3xl); }
 .bigstars { display: flex; gap: var(--sp-2); }
-.bigstars svg { width: var(--ic-xl); height: var(--ic-xl); color: var(--line); }
+.bigstars svg { width: var(--ic-xl); height: var(--ic-xl); color: var(--line-strong); }
 .bigstars svg.on { color: var(--star); }
 .stats3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-3); width: 100%; }
 .stat { display: grid; justify-items: center; gap: var(--sp-1); padding: var(--sp-3) var(--sp-2); border: 2px solid var(--line); border-radius: var(--r-md); background: var(--surface); }
@@ -446,3 +450,8 @@ html.ov-open { overflow: hidden; }
 .choice .grow span { display: block; color: var(--muted); font-size: var(--fs-sm); }
 @media (prefers-reduced-motion: no-preference) { .fx-in { animation: fxin .22s var(--ease); } }
 @keyframes fxin { from { opacity: 0; transform: translateY(var(--sp-2)); } }
+
+/* ---------- Meno movimento, se richiesto dal sistema ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0s !important; animation-duration: 0s !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
+}
